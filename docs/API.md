@@ -32,15 +32,19 @@ Invalid goal data returns 400, for example:
 }
 ```
 
-Errors identify fields without returning the submitted body. Malformed JSON and parser-rejected primitive bodies return 400 `{message: "Invalid JSON body"}`. Bodies exceeding Express JSON parser's default 100kb limit return 413 `{message: "Request body is too large"}`. JSON parser checks happen before controller validation. Unknown routes still use Express's default 404 behavior; a consistent JSON 404 is pending.
+Errors identify fields without returning the submitted body. Malformed JSON and parser-rejected primitive bodies return 400 `{message: "Invalid JSON body"}`. Bodies exceeding Express JSON parser's default 100kb limit return 413 `{message: "Request body is too large"}`. JSON parser checks happen before controller validation. Unknown routes/methods return 404 `{message: "Route not found"}` without reflecting the URL or query string.
 
-The existing controller still catches goal-service failures and returns 500 `{message: "Failed to create goal"}`; centralized service-error handling and sanitized goal error logging remain pending. The new final error middleware returns a generic 500 for otherwise unhandled request errors. This is an incremental contract, not a claim that all API errors have already been standardized.
+Unexpected goal-service failures now propagate through Express 5's async error handling to the shared final middleware, returning 500 `{message: "Internal server error"}`. The log contains only a fixed error event, not raw exception data, request bodies or credentials. This replaces the old `Failed to create goal` response. Structured diagnostics/request IDs and broader startup logging remain future work.
 
 ## Existing user and root routes
 
 - GET / returns app information, not a live readiness check.
 - GET /api/users/profile returns a static demonstration profile.
-- POST /api/users/register still logs and echoes submitted JSON. Do not submit credentials. Removing raw-body exposure is the next safety task before real authentication.
+- POST /api/users/register returns 501 `{message: "Registration is not implemented yet"}` without logging/echoing its body or creating an account. This deliberately replaces the earlier misleading success response. Real registration is planned for M2.
+
+## Response convention
+
+Keep current success contracts to avoid unnecessary rewrites. Errors return a safe `message`; validation errors additionally include `errors` with field/message pairs. Clients use HTTP status to distinguish request mistakes, missing routes, unavailable features and unexpected server failures. No raw error stack or arbitrary internal error message is exposed.
 
 ## Verification
 

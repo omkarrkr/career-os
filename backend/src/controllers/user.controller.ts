@@ -13,15 +13,10 @@ export const getProfile = (req: Request, res: Response) => {
 };
 
 export const registerUser = (
-    req: Request,
+    _req: Request,
     res: Response
 ) => {
-
-    console.log(req.body);
-
-    res.json({
-        message: "User received successfully!",
-        data: req.body
+    res.status(501).json({
+        message: "Registration is not implemented yet",
     });
-
 };

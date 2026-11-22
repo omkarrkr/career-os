@@ -169,3 +169,35 @@ Q: Why is error middleware mounted after routes? A: Errors flow forward through 
 Avoid returning entire invalid payloads, treating client mistakes as 500s, relying only on `new Date` to detect impossible calendar dates, and running tests against real user data. A test double proves HTTP-to-service behavior, not live database integration.
 
 Challenge: predict the response to `{ "title": " Learn SQL ", "category": "Development", "status": "COMPLETED" }`. Explain which fields reach Prisma and why the client cannot choose status through this endpoint.
+
+## M1, step 2: safe placeholders and shared API errors
+
+### What changed and why
+
+Registration is not implemented, so the endpoint now honestly returns 501 with a fixed message. It no longer logs or echoes incoming data. The route remains available for replacement with real registration in M2. Goal creation no longer catches/logs raw database errors locally; unexpected failures flow to shared error middleware. Unknown paths and unsupported methods return JSON 404 without reflecting the URL/query string. Successful goal/root/demo-profile contracts stay unchanged; goal failure responses now use the shared generic message.
+
+### New concepts and architecture
+
+- Centralized error handling: one shared place decides how unexpected request failures are logged and returned. This keeps controllers focused and prevents inconsistent error leaks.
+- Async rejection: an asynchronous operation can fail instead of returning a result. Express 5 forwards rejected route-handler promises to error middleware, so the controller can await its service without a duplicate catch.
+- 404: no route handles this method/path. This app uses a safe fixed JSON message.
+- 501: the requested feature has not been implemented. Returning this for the placeholder avoids falsely claiming an account was created.
+- Git commit versus push: a commit saves a local checkpoint; a push sends commits to the configured remote repository. A normal push does not overwrite divergent remote history. GitHub browser sign-in and command-line Git credentials can differ.
+
+Flow: JSON parser -> route/controller -> service -> success response. On unexpected failure: rejected promise -> shared error middleware -> fixed safe log event + generic 500. When no route matches: JSON 404 handler. The 404 handler belongs after routes, before the final error middleware.
+
+### Files and verification
+
+`user.controller.ts` stops raw-body handling; `goal.controller.ts` delegates failures; `error.middleware.ts` exports the 404 handler; `app.ts` mounts handlers in order. `tests/api-safety.test.mjs` adds credential non-disclosure and route regression tests; the goal tests add a simulated database-failure case. All tests use a dummy URL, and goal writes are replaced in memory.
+
+In PowerShell under `C:\PROJECTS\career-os\backend`, run `npm.cmd run typecheck`, `npm.cmd run build`, then `npm.cmd test`. Expected: no compiler errors and 29 passing tests (27 API cases and two parents). No real database reads/writes are involved. New assertions check both response bodies and console calls for accidental disclosure.
+
+### Interview Q&A, common mistakes and challenge
+
+Q: Why not return the underlying database error? A: Internal messages can contain private details; clients need a safe stable response, while operational logging should deliberately select safe diagnostic fields.
+
+Q: Why remove the local catch? A: Express 5 already forwards asynchronous failures. The shared handler provides one consistent policy without repeating it in every controller.
+
+Avoid pretending placeholder registration succeeded, logging whole request bodies, returning request URLs that may contain tokens, and assuming a browser login guarantees Git push authentication.
+
+Challenge: explain why an invalid title returns 400, a missing route returns 404, placeholder registration returns 501, and a database outage returns 500. Next we will validate startup settings and handle shutdown safely; M1 is still in progress.

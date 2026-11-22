@@ -35,7 +35,7 @@ Keep the original feature vision below as a reference, not an instruction to imp
 
 For each small task: explain the user benefit -> show affected layers and files -> implement -> run appropriate checks -> review the diff and secret exposure -> explain results and remaining limits. At major features, add concept/project notes, architecture flow, important decisions, interview Q&A, common mistakes and a small challenge. If owner-run verification is required, wait for results before advancing the major milestone.
 
-Commit only intended files with a meaningful message after checks appropriate to that change. Keep docs-only baseline work separate from implementation. Do not commit secrets, dependencies, generated output or private data; preserve the lockfile. A passing build checkpoint does not mean M0 is complete if database/startup checks remain unresolved. Do not push or publish merely because a local checkpoint was requested.
+Commit only intended files with a meaningful message after checks appropriate to that change. Keep docs-only baseline work separate from implementation. Do not commit secrets, dependencies, generated output or private data; preserve the lockfile. A passing build checkpoint does not mean M0 is complete if database/startup checks remain unresolved. On 22 November 2026 the owner authorized pushing verified checkpoints to the existing GitHub remote. Use normal pushes, never force-push shared history. Website publication is a separate action.
 
 ## Original phase breakdown (reference detail)
 
@@ -65,15 +65,17 @@ New generate/validate/typecheck/build scripts pass; the status script points to 
 
 ## Phase 1: backend/API standards
 
-- [ ] Define public response/error conventions and JSON 404 behavior.
+- [x] Document safe message-based errors and JSON 404; preserve existing success contracts.
 - [x] Add Zod validation for goal creation and safe JSON parser/oversized-body errors.
-- [ ] Finish centralized goal-service error handling and safe operational logging.
-- [ ] Stop logging/echoing unrestricted registration payloads; explicitly handle placeholder behavior until real registration is ready.
+- [x] Route unexpected goal failures through shared middleware with a fixed safe log event; richer operational diagnostics remain in the startup/logging task.
+- [x] Stop logging/echoing registration payloads; return explicit 501 until real registration is implemented.
 - [ ] Validate environment configuration, allow deployment port, add sanitized logs and graceful shutdown.
 - [ ] Add appropriate security headers, request limits and explicit frontend origin policy when origins are known.
 - [x] Add test infrastructure and goal API validation/parser-error tests; document current contracts in API.md.
 
 M1 step 1: typecheck and build pass; 22 API subtests plus their parent pass (Node reports 23 tests). Tests verify invalid requests do not call the persistence test double and valid requests preserve the 201 contract. No Supabase access or schema changes. Zod 4.6.7 is the only added package; existing resolved versions/integrities are unchanged, while npm recalculated development flags for optional TypeScript platform packages. M1 remains in progress; registration-body exposure and other unchecked items are not solved yet.
+
+M1 step 2: typecheck and build pass; 27 API cases plus two parent tests pass (Node reports 29 tests). New cases verify registration does not log/echo synthetic credentials, unknown routes/methods return safe JSON, existing root/demo profile responses remain available, and simulated async persistence failure returns/logs no private details. No Supabase access, migration or dependency change. Remaining M1 tasks: environment validation, deployment port, startup logs/shutdown, headers, request limits and origin policy.
 
 Acceptance: malformed requests return safe actionable errors; valid goal behavior remains compatible; no raw credential bodies in output/logs. Do not expose the public write API as a finished multi-user product.
 

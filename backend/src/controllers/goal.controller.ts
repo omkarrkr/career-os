@@ -19,30 +19,12 @@ export const createGoalController = async (
         return;
     }
 
-    try {
-        const {
-            title,
-            description,
-            category,
-            targetDate,
-        } = result.data;
+    const { title, description, category, targetDate } = result.data;
 
-        const goal = await createGoal(
-            title,
-            description,
-            category,
-            targetDate
-        );
+    const goal = await createGoal(title, description, category, targetDate);
 
-        res.status(201).json({
-            message: "Goal created successfully",
-            data: goal,
-        });
-    } catch (error) {
-        console.error(error);
-
-        res.status(500).json({
-            message: "Failed to create goal",
-        });
-    }
+    res.status(201).json({
+        message: "Goal created successfully",
+        data: goal,
+    });
 };

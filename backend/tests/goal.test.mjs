@@ -122,6 +122,24 @@ test("goal creation validates requests before database access", async (t) => {
             assert.equal(Object.hasOwn(writes.at(-1), "id"), false);
             assert.equal(Object.hasOwn(writes.at(-1), "status"), false);
         });
+
+        await t.test("async persistence failure reaches shared handler without exposing raw details", async (t) => {
+            const create = prisma.goal.create;
+            const logs = [];
+            const errorLog = t.mock.method(console, "error", (...args) => logs.push(args));
+            prisma.goal.create = async () => {
+                throw new Error("SYNTHETIC_PRIVATE_DATABASE_DETAILS");
+            };
+            try {
+                const response = await post({ title: "Learn SQL", category: "Development" });
+                assert.equal(response.status, 500);
+                assert.deepEqual(await response.json(), { message: "Internal server error" });
+                assert.deepEqual(logs, [["Unhandled request error"]]);
+            } finally {
+                prisma.goal.create = create;
+                errorLog.mock.restore();
+            }
+        });
     } finally {
         prisma.goal.create = originalCreate;
         await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));

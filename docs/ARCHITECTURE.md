@@ -19,7 +19,7 @@ HTTP JSON -> app.ts -> route -> controller -> service -> Prisma -> PostgreSQL
 - `schema.prisma` describes the Goal record. SQL migrations describe changes to the database over time.
 - The generated Prisma client supplies database types and query methods; it is ignored and must be generated locally.
 
-The goal path is `POST /api/goals -> createGoalController -> Zod schema validation -> createGoal -> prisma.goal.create -> PostgreSQL`. Invalid input stops at the controller with a 400. The schema trims required strings and selects only supported fields. `middleware/error.middleware.ts` is mounted after routes to handle parser errors and otherwise unhandled errors safely. The goal controller's existing local 500 catch is still present. Profile returns static data; registration echoes input. Root information is returned directly from `app.ts`. There is no frontend or AI layer.
+The goal path is `POST /api/goals -> createGoalController -> Zod schema validation -> createGoal -> prisma.goal.create -> PostgreSQL`. Invalid input stops at the controller with a 400. The schema trims required strings and selects only supported fields. A JSON 404 handler follows routes; final error middleware follows that. Async goal-service rejections reach the shared handler through Express 5, returning a generic 500 and logging a fixed event without raw exception data. Profile returns static data; registration returns 501 without logging or echoing its body. Root information is returned directly from `app.ts`. There is no frontend or AI layer.
 
 ## Configuration and boundaries
 

@@ -10,9 +10,9 @@ CareerOS is a personal career operating system for students, graduates and job s
 
 - Backend only: Node, TypeScript, Express 5, Prisma 7, PostgreSQL adapter, dotenv, tsx.
 - One Goal model and initial migration; only goal creation persists data.
-- Public static profile and request-echo registration are placeholders.
+- Profile is a public static placeholder; registration returns 501 without logging/echoing submitted data or creating accounts.
 - No frontend, actual accounts, AI provider integration or deployment setup. Automated goal API tests now run through Node's test runner with database access replaced in memory.
-- Goal creation uses Zod runtime validation; invalid fields return 400 with field messages. Final error middleware safely formats malformed JSON and oversized-body errors. Registration body exposure, JSON 404 and broader error/configuration standards remain pending under M1.
+- Goal creation uses Zod runtime validation; invalid fields return 400 with field messages. Shared middleware formats parser errors and unexpected goal failures safely; unknown routes return JSON 404. Environment/security safeguards and broader operational diagnostics remain pending under M1.
 - Prisma CLI/client/adapter are exactly pinned to 7.10.0 in manifest and lockfile; resolved packages were not upgraded.
 - On 22 November 2026, no-emit checking, compilation, client generation and schema validation pass. Read-only DB connectivity and Prisma migration status pass; the initial migration is finished. Compiled server startup connected before listening and GET / returned 200.
 - Existing local DATABASE_URL is private and unchanged. Earlier audit database failures did not recur; their cause remains unproven. M0 verification did not read application records, write data or apply migrations.
@@ -53,10 +53,11 @@ The UI should be professional, responsive, accessible and consistent. Avoid hard
 - At major feature milestones, prepare concept/project notes, flow, key code explanations, interview Q&A, common mistakes and a small practice challenge.
 - Keep controllers thin, business logic in services, proper TypeScript types and runtime external-input validation. Avoid unnecessary abstractions/dependencies.
 - Test important behavior, review diffs and secrets before meaningful commits; preserve the lockfile.
+- The owner authorized pushing verified checkpoints to the existing GitHub remote on 22 November 2026. Push normally without force; never upload secrets. Resolve authentication through the user's normal sign-in flow, not by requesting tokens in chat.
 - Never log passwords, expose hashes, commit environment secrets or query another user's resources.
 - Preserve the existing Supabase database. Never reset, drop, truncate or recreate migrations to fix normal issues. Explain and review additive schema changes before safe application.
 - Do not ask the owner to share passwords, tokens or full environment contents.
 
 ## Next recommended milestone
 
-M0 is verified as of 22 November 2026. M1 step 1 adds goal validation, parser-error handling and automated API tests. Next remove registration body exposure and standardize remaining errors/JSON 404, then finish environment/security safeguards before M2 authentication/ownership. The audit itself made no application changes; subsequent changes and verification are tracked in ROADMAP.md and MILESTONE_NOTES.md.
+M0 is verified as of 22 November 2026. M1 steps 1-2 add goal validation, safe shared API errors/JSON 404, a non-echoing registration placeholder and automated API tests. Next finish environment/startup/security safeguards before M2 authentication/ownership. The audit itself made no application changes; subsequent changes and verification are tracked in ROADMAP.md and MILESTONE_NOTES.md.

@@ -86,7 +86,7 @@ model Goal {
 | GET    | `/`                   | Health check / app info  |
 | POST   | `/api/goals`          | Create a new goal        |
 | GET    | `/api/users/profile`   | Return a static demo profile |
-| POST   | `/api/users/register`  | Placeholder: logs/echoes submitted JSON; do not send credentials |
+| POST   | `/api/users/register`  | Placeholder: returns 501; does not log or echo submitted data |
 
 ## Getting Started
 
