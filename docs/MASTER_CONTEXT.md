@@ -13,7 +13,7 @@ CareerOS is a personal career operating system for students, graduates and job s
 - Public static profile and request-echo registration are placeholders.
 - No frontend, actual accounts, AI provider integration, tests or deployment setup.
 - Lockfile resolves Prisma to 7.10.0; package declarations use caret ranges.
-- TypeScript verification fails TS6059; schema validates; live DB checks failed during audit.
+- On 22 November 2026, explicit source inclusion and omission of undefined optional Prisma fields fixed compilation: no-emit checking and build pass. Schema validates. Live DB checks failed during the earlier audit and have not yet been reverified; normal startup remains pending.
 - Existing local DATABASE_URL is private. Historical successful database use was reported by the owner, but not reverified during this audit.
 
 ## Intended capabilities

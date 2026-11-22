@@ -1,6 +1,6 @@
 # CareerOS architecture
 
-Verified 17 November 2026. This document separates implemented behavior from intended design.
+Audited 17 November 2026; build configuration updated 22 November 2026. This document separates implemented behavior from intended design.
 
 ## Current system
 
@@ -23,7 +23,7 @@ The goal path is `POST /api/goals -> createGoalController -> createGoal -> prism
 
 ## Configuration and boundaries
 
-The backend is an ESM Node/TypeScript package. Source imports use `.js` paths for compiled execution. Development uses tsx, compilation uses tsc, production start expects `dist/server.js`. Strict TypeScript checks do not validate incoming JSON at runtime. The current compiler project includes the root Prisma config outside its source root and fails TS6059.
+The backend is an ESM Node/TypeScript package. Source imports use `.js` paths for compiled execution. Development uses tsx, compilation uses tsc, production start expects `dist/server.js`. Strict TypeScript checks do not validate incoming JSON at runtime. The compiler now explicitly includes `src/**/*.ts`, leaving the root Prisma CLI config outside the application build. Optional goal fields are omitted when absent, satisfying strict optional-property typing. No-emit checking and compilation pass as of 22 November 2026; this does not establish successful database startup.
 
 Prisma CLI uses `prisma7.config.ts`; pass this filename explicitly. Runtime and CLI both use `DATABASE_URL`. Schema validation passed, but live database connectivity failed during the audit. A checked-in migration is evidence of intended structure, not proof it is currently applied remotely.
 

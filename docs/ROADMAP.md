@@ -44,13 +44,18 @@ Commit only intended files with a meaningful message after checks appropriate to
 - [x] Inspect all application source, schema, migration, configuration, README, ignores and lockfile metadata.
 - [x] Record actual architecture, API contracts, risks and missing product areas.
 - [x] Validate Prisma schema and probe non-persistent HTTP behavior.
-- [ ] Fix TypeScript include boundaries and verify both no-emit checking and production build/start.
+- [x] Fix TypeScript include boundary and optional Prisma input typing; verify no-emit checking and production compilation (22 November 2026).
+- [ ] Verify production server startup; compilation alone does not verify database connectivity.
 - [ ] Diagnose database failure with sanitized diagnostics; confirm connection mode, connectivity and read-only migration status. Current checks failed; do not reset or reapply migrations blindly.
 - [ ] Verify normal startup connects before listening and root returns expected data.
 - [ ] Add a safe `.env.example`, explicit custom Prisma config commands and accurate Windows setup instructions.
 - [ ] Reconcile intended exact Prisma pinning with manifest ranges without upgrading versions unnecessarily.
 
 Acceptance: clean compilation, working documented startup, valid schema, known migration state and no database data/schema changes made to repair ordinary configuration issues. Pause if database access remains unavailable; record the actual blocker rather than claiming success.
+
+### M0 step 1 evidence (22 November 2026)
+
+`tsc.cmd --noEmit` and `npm.cmd run build` pass. Prisma schema validation passes with `--config prisma7.config.ts`. A one-off service check stubbed `prisma.goal.create` and verified omitted optional fields, supplied description/date, empty description preservation and returned result. No database writes or dependency changes occurred. Database connectivity/migration status, normal startup and setup cleanup remain pending. Learning notes: MILESTONE_NOTES.md.
 
 ## Phase 1: backend/API standards
 

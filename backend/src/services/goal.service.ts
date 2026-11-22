@@ -9,11 +9,9 @@ export const createGoal = async (
     const goal = await prisma.goal.create({
         data: {
             title,
-            description,
             category,
-            targetDate: targetDate
-                ? new Date(targetDate)
-                : undefined,
+            ...(description !== undefined ? { description } : {}),
+            ...(targetDate ? { targetDate: new Date(targetDate) } : {}),
         },
     });
 
