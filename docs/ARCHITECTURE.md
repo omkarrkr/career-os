@@ -25,7 +25,7 @@ The goal path is `POST /api/goals -> createGoalController -> createGoal -> prism
 
 The backend is an ESM Node/TypeScript package. Source imports use `.js` paths for compiled execution. Development uses tsx, compilation uses tsc, production start expects `dist/server.js`. Strict TypeScript checks do not validate incoming JSON at runtime. The compiler now explicitly includes `src/**/*.ts`, leaving the root Prisma CLI config outside the application build. Optional goal fields are omitted when absent, satisfying strict optional-property typing. No-emit checking and compilation pass as of 22 November 2026; this does not establish successful database startup.
 
-Prisma CLI uses `prisma7.config.ts`; pass this filename explicitly. Runtime and CLI both use `DATABASE_URL`. Schema validation passed, but live database connectivity failed during the audit. A checked-in migration is evidence of intended structure, not proof it is currently applied remotely.
+Prisma CLI uses `prisma7.config.ts`; package scripts select this filename explicitly. Runtime and CLI both use `DATABASE_URL`. Schema validation, read-only live connectivity and migration status passed on 22 November 2026 after earlier audit failures. The initial migration is recorded as finished remotely; Goal column metadata agrees with the model. Compiled startup and GET / were verified. These checks do not establish every constraint, policy or backup state. Prisma CLI/client/adapter are pinned exactly to 7.10.0.
 
 ## Planned architecture
 

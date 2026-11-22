@@ -12,9 +12,9 @@ CareerOS is a personal career operating system for students, graduates and job s
 - One Goal model and initial migration; only goal creation persists data.
 - Public static profile and request-echo registration are placeholders.
 - No frontend, actual accounts, AI provider integration, tests or deployment setup.
-- Lockfile resolves Prisma to 7.10.0; package declarations use caret ranges.
-- On 22 November 2026, explicit source inclusion and omission of undefined optional Prisma fields fixed compilation: no-emit checking and build pass. Schema validates. Live DB checks failed during the earlier audit and have not yet been reverified; normal startup remains pending.
-- Existing local DATABASE_URL is private. Historical successful database use was reported by the owner, but not reverified during this audit.
+- Prisma CLI/client/adapter are exactly pinned to 7.10.0 in manifest and lockfile; resolved packages were not upgraded.
+- On 22 November 2026, no-emit checking, compilation, client generation and schema validation pass. Read-only DB connectivity and Prisma migration status pass; the initial migration is finished. Compiled server startup connected before listening and GET / returned 200.
+- Existing local DATABASE_URL is private and unchanged. Earlier audit database failures did not recur; their cause remains unproven. M0 verification did not read application records, write data or apply migrations.
 
 ## Intended capabilities
 
@@ -58,4 +58,4 @@ The UI should be professional, responsive, accessible and consistent. Avoid hard
 
 ## Next recommended milestone
 
-M0: foundation repair and verification, starting with the TypeScript build boundary, followed by database/setup/startup verification. Then M1 API safety and M2 authentication/ownership. The audit itself made no application changes; track subsequent verification in ROADMAP.md.
+M0 is verified as of 22 November 2026. Next: M1 API safety in small steps (validation, safe errors, remove raw registration-body exposure), then M2 authentication/ownership. The audit itself made no application changes; subsequent changes and verification are tracked in ROADMAP.md and MILESTONE_NOTES.md.

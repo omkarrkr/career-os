@@ -14,7 +14,9 @@ CareerOS is a full-stack AI platform that helps engineering students with:
 
 ## Current Status
 
-The backend is scaffolded and operational. The frontend (React + TypeScript + Tailwind CSS) is **not yet built** — this repo currently contains only the Node.js/Express backend.
+The backend foundation is verified as of 22 November 2026: type checking, compilation, database connectivity, migration status and compiled startup pass. The frontend (React + TypeScript + Tailwind CSS) is **not yet built** — this repo currently contains only the Node.js/Express backend. User endpoints are placeholders, and goal creation is not yet authenticated or validated; this is not a production-ready multi-user API.
+
+The first release connects a target role, skill/project evidence, explained gaps, goals, a roadmap and a reviewed AI weekly plan. The features above describe the longer-term vision. See [the active milestones](docs/ROADMAP.md), [architecture](docs/ARCHITECTURE.md), [historical audit](docs/PROJECT_AUDIT.md) and [learning notes](docs/MILESTONE_NOTES.md).
 
 ## Tech Stack
 
@@ -34,7 +36,7 @@ The backend is scaffolded and operational. The frontend (React + TypeScript + Ta
 - Prisma ORM
 
 ### AI
-- Google Gemini API
+- Planned: one LLM provider behind a separate AI service interface. No AI integration exists yet; Gemini was an early option.
 
 ## Backend Architecture
 
@@ -50,7 +52,7 @@ backend/
 │   │   └── user.controller.ts
 │   ├── services/           # Business logic layer
 │   │   ├── goal.service.ts      # prisma.goal.create(...)
-│   │   └── user.service.ts      # user profile/registration logic
+│   │   └── user.service.ts      # static demo profile only
 │   ├── routes/             # Express routers
 │   │   ├── goal.routes.ts       # POST /api/goals
 │   │   └── user.routes.ts       # GET /api/users/profile, POST /api/users/register
@@ -83,52 +85,66 @@ model Goal {
 |--------|-----------------------|--------------------------|
 | GET    | `/`                   | Health check / app info  |
 | POST   | `/api/goals`          | Create a new goal        |
-| GET    | `/api/users/profile`   | Get user profile         |
-| POST   | `/api/users/register`  | Register a new user      |
+| GET    | `/api/users/profile`   | Return a static demo profile |
+| POST   | `/api/users/register`  | Placeholder: logs/echoes submitted JSON; do not send credentials |
 
 ## Getting Started
 
 ### Prerequisites
-- Node.js (v18+)
+- Verified development environment: Node.js v24.22.1 and npm 11.19.1. Other versions have not been verified for this repository.
 - A PostgreSQL database (e.g., [Supabase](https://supabase.com/))
 
 ### Setup
 
-```bash
-cd backend
-npm install
+```powershell
+Set-Location C:\PROJECTS\career-os\backend
+npm.cmd ci
 ```
 
-Copy the `.env` file and set your `DATABASE_URL`:
+For an existing checkout with a working `.env`, preserve it. For a new checkout, create it only if missing:
 
-```bash
-cp .env .env   # already present — update DATABASE_URL with your own connection string
+```powershell
+if (-not (Test-Path -LiteralPath .env)) {
+    Copy-Item -LiteralPath .env.example -Destination .env
+}
 ```
 
-Generate the Prisma client:
+Edit the placeholder `DATABASE_URL` locally using your own Supabase connection settings. Never commit or share the real value. The backend loads `.env` from the backend working directory. `.env.example` contains placeholders only.
 
-```bash
-npx prisma generate
+Generate the client, validate the schema, check migration status without applying changes, and compile:
+
+```powershell
+npm.cmd run prisma:generate
+npm.cmd run prisma:validate
+npm.cmd run prisma:status
+npm.cmd run typecheck
+npm.cmd run build
 ```
 
-Run the database migrations:
+These Prisma scripts explicitly select `prisma7.config.ts`. `prisma:status` checks migration history; it does not establish that every live database detail is free of drift. The existing database currently reports up to date. Applying migrations is a separate reviewed action, not an automatic setup repair. Never reset the database or recreate existing migrations to resolve ordinary errors.
 
-```bash
-npx prisma migrate deploy
-```
+`npm ci` installs the versions recorded in the lockfile. The Prisma CLI, client and adapter are pinned to 7.10.0. No package upgrade is required for this milestone. Windows examples use `npm.cmd` to avoid a PowerShell script-shim execution-policy issue; macOS/Linux users can use `npm` from the equivalent backend directory.
 
 ### Running
 
-```bash
+```powershell
 # Development mode (hot reload)
-npm run dev
+npm.cmd run dev
 
-# Production
-npm run build
-npm start
+# Or compiled mode (stop development mode first)
+npm.cmd run build
+npm.cmd start
 ```
 
-The server will start on `http://localhost:3000`.
+Expected output includes `Database connected`, then `Server is running on http://localhost:3000`. In a second PowerShell terminal:
+
+```powershell
+Invoke-RestMethod -Uri http://localhost:3000/
+```
+
+Expect `project: CareerOS` and `status: Backend Running`. Stop the server with Ctrl+C. The root route returns application information, not a continuous database readiness check. Do not run both modes on port 3000 at the same time.
+
+If the database check fails, preserve `.env` and collect only sanitized error details. If port 3000 is occupied, identify your existing server before stopping anything. No automated test suite exists yet; it is part of M1.
 
 ## Environment Variables
 
@@ -141,7 +157,7 @@ The server will start on `http://localhost:3000`.
 - [ ] Build React frontend (TypeScript + Tailwind)
 - [ ] User authentication
 - [ ] Resume analysis & ATS scoring
-- [ ] AI career mentor (Google Gemini API)
+- [ ] Validated AI weekly planning first; broader career assistant later
 - [ ] Mock interview module
 - [ ] Skill tracking
 - [ ] Career progress dashboard

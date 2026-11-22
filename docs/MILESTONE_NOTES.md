@@ -55,3 +55,54 @@ Explain the difference between `{}` and `{ description: undefined }`, then expla
 ### Remaining M0 work
 
 Read-only database diagnosis and migration verification, normal server startup, safe environment example, accurate setup instructions, and reconciliation of intended Prisma version pinning. Do not start M1 as though M0 were fully verified.
+
+## M0, step 2: database, startup and setup verified (22 November 2026)
+
+### What we verified
+
+The existing Supabase connection works. A read-only SQL check returned a successful connection; migration metadata shows the initial migration finished, and Goal column metadata matches the intended model. Prisma reports the database up to date. The compiled backend connected before opening port 3000, and GET / returned 200 with project CareerOS. The temporary process was stopped afterward. No application records were read or changed, and no migration was applied. The earlier connection failure did not recur; we do not know its historical cause.
+
+### New concepts in simple words
+
+- Environment variable: a setting outside application source, such as DATABASE_URL. `.env` holds the real local value; `.env.example` is a safe template with invented placeholders.
+- Connection string: the address and credentials needed to reach a database. Treat it like a key, not ordinary text to share.
+- Connection pooler: a service that manages database connections for applications. The existing URL uses Supabase's pooler.
+- Migration: saved instructions describing a database structure change. Checking status reads which instructions have been applied; applying a migration changes structure.
+- Metadata: information about the database itself, such as column types or migration names, rather than people's goal records.
+- Read-only transaction: a group of queries in which PostgreSQL disallows ordinary data writes. The verification transaction ended with ROLLBACK.
+- Version pin: `7.10.0` selects that exact version; `^7.10.0` permits compatible newer versions during dependency resolution. We pinned existing versions without upgrading them.
+- Lockfile: records resolved dependency versions so installations can be reproduced with `npm ci`. All resolved package records were preserved.
+
+### Files and architecture
+
+`backend/.env.example` is a safe setup template. `package.json` now provides typecheck and explicit-config Prisma generate/validate/status scripts. `package-lock.json` mirrors the three exact Prisma declarations. README documents Windows setup, expected output, secret safety and placeholder endpoints.
+
+Normal startup: private environment settings -> shared Prisma client -> database connection -> Express listens -> browser receives JSON. Checking schema validity alone does not prove the connection; checking migration history alone does not prove every live schema detail is identical.
+
+### Try it yourself
+
+In PowerShell, with your existing `.env` preserved:
+
+```powershell
+Set-Location C:\PROJECTS\career-os\backend
+npm.cmd run prisma:status
+npm.cmd run typecheck
+npm.cmd run build
+npm.cmd start
+```
+
+Expected: database up to date, no type/build errors, then Database connected and Server is running. In a second terminal, run `Invoke-RestMethod -Uri http://localhost:3000/`; expect project CareerOS. Use Ctrl+C in the server terminal to stop it. These are optional repeat-verification steps: the agent already ran the equivalent checks successfully. Do not run another server on an occupied port.
+
+### Interview questions and common mistakes
+
+Q: Why keep a real `.env` out of Git? A: It may contain credentials. Commit a placeholder template so other developers know which settings are needed.
+
+Q: Does checking migration status apply migrations? A: No. Checking and applying are different operations; application is reviewed separately.
+
+Q: Why pin related Prisma packages together? A: To keep CLI, generated client and adapter on the intended tested version.
+
+Avoid overwriting an existing `.env`, resetting a database to solve connectivity, assuming a temporary error has a proven cause, and claiming migration status verifies every security policy or schema constraint.
+
+### Small challenge and next task
+
+Explain why the backend should wait for its database before listening. Then describe why a goal with a missing title should produce a clear client error rather than an unexplained 500. That second question leads into M1: request validation and API safety. M0 is now verified; no authentication or production-readiness claim is implied.

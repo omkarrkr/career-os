@@ -14,7 +14,7 @@ Keep Node/Express/TypeScript, PostgreSQL/Supabase and Prisma. Build the UI with 
 
 | Milestone | Scope and acceptance | Git checkpoint when verified |
 | --- | --- | --- |
-| M0. Foundation | Fix compiler boundary; verify build; diagnose read-only database connectivity and migration status; document setup; verify normal startup. Never reset existing data. | `fix: restore backend build configuration` and remaining foundation fixes as separate stable steps |
+| M0. Foundation — verified | Compiler boundary/build, read-only database connectivity, migration status, compiled startup, safe setup and exact Prisma pins verified on 22 November 2026. Existing data preserved. | `6720344` build repair; foundation setup checkpoint follows |
 | M1. API safety | Validated goal input, consistent errors/JSON 404, stop registration body exposure, environment checks, safe logs and initial API tests. | `feat: establish validated backend API foundation` |
 | M2. Identity and ownership | Real registration/login/logout, password hashing, session strategy, protected routes, explicit public user fields; reviewed non-destructive migration for existing goals; cross-user denial tests. | `feat: add authentication and resource ownership` |
 | M3. First usable application | React shell, auth screens, accessible reusable UI, career profile APIs/forms; persisted data survives reload; deployment preview with appropriate access limits. | `feat: connect career profile frontend and backend` |
@@ -45,17 +45,23 @@ Commit only intended files with a meaningful message after checks appropriate to
 - [x] Record actual architecture, API contracts, risks and missing product areas.
 - [x] Validate Prisma schema and probe non-persistent HTTP behavior.
 - [x] Fix TypeScript include boundary and optional Prisma input typing; verify no-emit checking and production compilation (22 November 2026).
-- [ ] Verify production server startup; compilation alone does not verify database connectivity.
-- [ ] Diagnose database failure with sanitized diagnostics; confirm connection mode, connectivity and read-only migration status. Current checks failed; do not reset or reapply migrations blindly.
-- [ ] Verify normal startup connects before listening and root returns expected data.
-- [ ] Add a safe `.env.example`, explicit custom Prisma config commands and accurate Windows setup instructions.
-- [ ] Reconcile intended exact Prisma pinning with manifest ranges without upgrading versions unnecessarily.
+- [x] Verify compiled server startup; compilation alone does not verify database connectivity.
+- [x] Recheck database using sanitized read-only diagnostics: connectivity and migration status pass. Earlier failure did not recur; its historical cause remains unknown.
+- [x] Verify normal startup connects before listening and root returns expected data.
+- [x] Add a safe `.env.example`, explicit custom Prisma config commands and accurate Windows setup instructions.
+- [x] Pin Prisma CLI/client/adapter to their existing 7.10.0 resolution; dependency tree unchanged.
 
 Acceptance: clean compilation, working documented startup, valid schema, known migration state and no database data/schema changes made to repair ordinary configuration issues. Pause if database access remains unavailable; record the actual blocker rather than claiming success.
 
 ### M0 step 1 evidence (22 November 2026)
 
 `tsc.cmd --noEmit` and `npm.cmd run build` pass. Prisma schema validation passes with `--config prisma7.config.ts`. A one-off service check stubbed `prisma.goal.create` and verified omitted optional fields, supplied description/date, empty description preservation and returned result. No database writes or dependency changes occurred. Database connectivity/migration status, normal startup and setup cleanup remain pending. Learning notes: MILESTONE_NOTES.md.
+
+### M0 completion evidence (22 November 2026)
+
+Read-only `SELECT 1` passed. Migration history shows `20260915165713_init` finished and not rolled back. Live Goal column names/types/nullability match the checked-in model. Prisma `migrate status --config prisma7.config.ts` reports one migration and an up-to-date database. A temporary compiled server connected before listening and GET / returned 200 with project CareerOS; only the verification-started process was stopped. No application rows were read or written and no migration was applied. Migration status/column checks are not a complete schema-drift, policy or backup audit.
+
+New generate/validate/typecheck/build scripts pass; the status script points to the same verified read-only command. Manifest and lockfile root declarations agree on exact Prisma 7.10.0 pins; all resolved lockfile package records are unchanged. `.env.example` contains placeholders only; real `.env` was untouched. Generated output remains ignored. M0 is verified; the next small task is M1 input validation and API error conventions, taught before implementation.
 
 ## Phase 1: backend/API standards
 
