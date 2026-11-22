@@ -43,9 +43,11 @@ The first release connects a target role, skill/project evidence, explained gaps
 ```
 backend/
 ├── src/
-│   ├── server.ts           # Entry point: loads dotenv, connects Prisma, starts HTTP server on :3000
+│   ├── server.ts           # Loads/validates settings, starts server, handles shutdown signals
+│   ├── server-lifecycle.ts # Connect-before-listen and bounded HTTP/database cleanup
 │   ├── app.ts              # Express app: JSON middleware, health-check route, mounts routers
 │   ├── config/
+│   │   ├── env.ts          # Validates DATABASE_URL and PORT without exposing values
 │   │   └── prisma.ts       # Singleton PrismaClient wired with the PrismaPg adapter (pg driver)
 │   ├── controllers/        # HTTP layer — parses request/res, calls services
 │   │   ├── goal.controller.ts
@@ -136,25 +138,28 @@ npm.cmd run build
 npm.cmd start
 ```
 
-Expected output includes `Database connected`, then `Server is running on http://localhost:3000`. In a second PowerShell terminal:
+With the default port, expected output includes `Database connected`, then `Server is running on http://localhost:3000`. In a second PowerShell terminal:
 
 ```powershell
 Invoke-RestMethod -Uri http://localhost:3000/
 ```
 
-Expect `project: CareerOS` and `status: Backend Running`. Stop the server with Ctrl+C. The root route returns application information, not a continuous database readiness check. Do not run both modes on port 3000 at the same time.
+Expect `project: CareerOS` and `status: Backend Running`. Stop the server with Ctrl+C; after successful startup, its SIGINT handler stops new connections, waits for active requests, and disconnects Prisma. Expect `Server shutdown started`, then `Server shutdown completed`. Cleanup has a 10-second deadline; failure/timeout exits with code 1 rather than claiming success. SIGTERM is handled for hosting platforms that deliver it. Force-killing a process bypasses graceful handling. The root route returns application information, not a continuous database readiness check. Do not run both modes on the same port.
 
 If the database check fails, preserve `.env` and collect only sanitized error details. If port 3000 is occupied, identify your existing server before stopping anything.
 
 ### Tests
 
-From `backend`, run `npm.cmd test`. The Node test runner uses tsx to import the TypeScript app. API tests start a temporary loopback server and replace Prisma goal writes with an in-memory test double using a dummy database URL; no Supabase connection or records are used. Tests cover invalid goal data, valid requests, deadlines, unexpected fields, malformed JSON and oversized bodies. See [API contracts](docs/API.md) and [learning notes](docs/MILESTONE_NOTES.md). These are API tests with database access replaced, not live-database integration tests.
+From `backend`, run `npm.cmd test`. The Node test runner uses tsx to import TypeScript. Tests use temporary local servers, dummy database settings and in-memory database stand-ins; no Supabase connection or records are used. Coverage includes API validation/errors/non-disclosure and startup settings, occupied ports, request draining, cleanup failures/timeouts, repeated shutdown events and entry-point failure safety. Signal wiring tests emit Node events internally; they do not claim to test real OS signal delivery. See [API contracts](docs/API.md) and [learning notes](docs/MILESTONE_NOTES.md). These are not live-database integration tests.
 
 ## Environment Variables
 
 | Variable       | Description                  |
 |----------------|------------------------------|
 | `DATABASE_URL` | PostgreSQL connection string |
+| `PORT` | Optional HTTP port, integer 1-65535; defaults to 3000 |
+
+Startup validates settings before constructing the database client. Missing/invalid settings produce a message containing setting names only and exit code 1. A well-formed URL can still have incorrect credentials or point to an unavailable database: syntax validation does not prove connectivity. If you select a different port, use that port in browser/API requests too. Never overwrite your working `.env` with the example template.
 
 ## Roadmap
 

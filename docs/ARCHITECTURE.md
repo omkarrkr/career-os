@@ -5,12 +5,17 @@ Audited 17 November 2026; build configuration updated 22 November 2026. This doc
 ## Current system
 
 ```text
-server.ts -> load dotenv -> Prisma $connect -> app.listen(3000)
+server.ts -> load dotenv -> validate environment -> create HTTP server
+            -> server-lifecycle.ts -> Prisma $connect -> listen(PORT)
                                                 |
 HTTP JSON -> app.ts -> route -> controller -> service -> Prisma -> PostgreSQL
 ```
 
 `app.ts` constructs Express and mounts routers without opening a listening socket. `server.ts` owns startup and waits for the database before accepting connections. This separation lets the automated goal API tests import the app independently and replace database writes in memory.
+
+`config/env.ts` validates DATABASE_URL syntax and PORT (default 3000) with Zod, reporting field names only. Server entry dynamically imports app/Prisma after validation. The shared Prisma configuration also reads validated settings. `server-lifecycle.ts` contains testable connect/listen/stop operations. Startup connection/listen failure attempts a database disconnect and is logged by entry with a fixed safe message.
+
+After startup, SIGINT/SIGTERM handlers request shutdown once. HTTP stops accepting new connections, existing requests drain, then Prisma disconnects. A 10-second deadline bounds normal shutdown including database cleanup; on timeout remaining HTTP connections are closed and entry exits unsuccessfully. Cleanup failure also produces a nonzero exit. Signal delivery varies by OS; tests exercise handler wiring through emitted events and lifecycle behavior through real local HTTP servers with fake database methods. No Supabase connection was used for this lifecycle change.
 
 - Routes select handlers by HTTP method and URL.
 - Controllers select request fields and form HTTP responses.

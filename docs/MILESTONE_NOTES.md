@@ -201,3 +201,85 @@ Q: Why remove the local catch? A: Express 5 already forwards asynchronous failur
 Avoid pretending placeholder registration succeeded, logging whole request bodies, returning request URLs that may contain tokens, and assuming a browser login guarantees Git push authentication.
 
 Challenge: explain why an invalid title returns 400, a missing route returns 404, placeholder registration returns 501, and a database outage returns 500. Next we will validate startup settings and handle shutdown safely; M1 is still in progress.
+
+## M1, step 3: check settings and stop cleanly
+
+### What we built, in plain English
+
+Think of the backend as a shop. Before opening, it checks its address/settings and makes sure its database is available. At closing time, it stops letting new people in, finishes serving people already inside, then closes the database connection. If closing gets stuck, it reports failure instead of waiting forever.
+
+The server now checks DATABASE_URL and PORT before starting. PORT is the numbered entrance where it receives HTTP requests: our usual value is 3000. You can choose another integer from 1 to 65535; leaving PORT absent still uses 3000. Existing `.env` values were not edited.
+
+DATABASE_URL must have PostgreSQL URL structure, a host and a database path. The checker reports setting names without printing values. It cannot tell whether the password is correct or the database is reachable; connecting is a separate check.
+
+### The new concepts
+
+- Startup validation: checking settings before opening the server. For example, PORT=70000 is rejected immediately rather than becoming a confusing listen error later.
+- Signal: a message asking a process to stop. Ctrl+C normally produces SIGINT; hosting platforms commonly use SIGTERM. Support/delivery depends on the operating system.
+- Graceful shutdown: stop accepting new connections, let current requests finish, then release database connections.
+- Timeout/deadline: a maximum wait. We allow 10 seconds for shutdown. After that, remaining HTTP connections are closed and the process exits with failure.
+- Exit code: a number telling the operating system how the program ended. We use 0 for a successful stop and 1 for configuration/startup/cleanup failure.
+- Repeated-safe cleanup: pressing stop twice must not disconnect twice. The code remembers and returns the same cleanup promise.
+- A promise represents work that may finish later. We wait for cleanup, but also race it against the deadline. The first completion determines whether shutdown succeeded in time.
+
+### Which files do what?
+
+| File | Simple responsibility |
+| --- | --- |
+| `src/config/env.ts` | Read and validate settings with Zod; return safe error names |
+| `src/config/prisma.ts` | Use the validated database URL for Prisma |
+| `src/server-lifecycle.ts` | Connect, listen, stop HTTP, disconnect database, enforce shutdown deadline |
+| `src/server.ts` | Load environment, validate first, start the app and wire stop signals/logs |
+| `.env.example` | Explain the optional PORT setting without real credentials |
+| `tests/env.test.mjs` | Check settings and entry-point failure/signal wiring |
+| `tests/server-lifecycle.test.mjs` | Check start/stop order, port conflict, request draining and cleanup failures |
+
+We keep the start/stop function separate so tests can supply a fake database object. This is often called dependency injection: giving a function the tool it needs instead of making it always reach for the real tool itself.
+
+### Data flow
+
+```text
+Start: load .env -> validate settings -> create database client
+       -> connect database -> listen on PORT
+
+Stop after startup: SIGINT/SIGTERM -> stop new connections
+       -> finish active requests -> disconnect Prisma -> successful exit
+       or -> cleanup error/deadline -> safe failure message and exit code 1
+```
+
+The shutdown handlers are installed after successful startup. Startup failures attempt a database disconnect and report a safe fixed message. A hard kill cannot be cleaned up by JavaScript. We are not claiming that a database connection attempt itself has a new 10-second deadline; the new deadline applies to shutdown.
+
+### What we tested
+
+Type checking/build pass; the full runner reports 43 passing tests including its two parent tests. New checks cover missing/invalid settings, safe error output, custom/default ports, connect-before-listen, occupied ports, an active request finishing before database disconnect, repeat stops, stuck requests, stuck/failed database cleanup, and entry-point signal handlers.
+
+Signal tests emit SIGINT/SIGTERM events inside a test subprocess with fake database methods. This proves our handlers are wired; it does not reproduce actual OS signal delivery. Other lifecycle tests use real temporary local HTTP servers. No Supabase access, application data writes, migrations or dependency upgrades were needed.
+
+### Commands and expected output
+
+In PowerShell:
+
+```powershell
+Set-Location C:\PROJECTS\career-os\backend
+npm.cmd run typecheck
+npm.cmd run build
+npm.cmd test
+```
+
+Expect no compiler errors and 43 passing tests. These checks are already run by the agent; you can repeat them for learning.
+
+Optional manual check using your existing configured database: run `node dist/server.js`, then press Ctrl+C in that terminal after the startup messages. Expect `Server shutdown started` followed by `Server shutdown completed`. This optional real-environment check was not needed for the automated test suite. If another server owns the chosen port, identify it or select a free PORT instead of killing an unknown process. Do not paste `.env` or credentials into chat.
+
+### Interview questions, mistakes and a small challenge
+
+Q: Why validate before making the database client? A: Invalid settings should produce a clear safe error before infrastructure starts.
+
+Q: Why close HTTP before disconnecting Prisma? A: A request already being handled may still need its database connection to finish.
+
+Q: Why use a shutdown deadline? A: A stuck request or database cleanup should not keep a deployment waiting forever. A timeout is a failure and may interrupt remaining work.
+
+Common mistakes: confusing a valid-looking URL with a working login; logging whole connection errors; disconnecting the database while active requests need it; assuming force-kill runs cleanup; claiming simulated signal tests prove real OS behavior.
+
+Challenge: a request is halfway through saving a goal when you press Ctrl+C. Explain why immediately disconnecting Prisma could break it, and what our shutdown order does instead.
+
+For the underlying Node behavior, see [HTTP server close](https://nodejs.org/api/http.html#serverclosecallback) and [signal events](https://nodejs.org/api/process.html#signal-events). Next: basic HTTP security headers, request rate limits and frontend-origin policy. M1 is still in progress.

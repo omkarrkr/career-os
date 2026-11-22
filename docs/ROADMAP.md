@@ -69,13 +69,15 @@ New generate/validate/typecheck/build scripts pass; the status script points to 
 - [x] Add Zod validation for goal creation and safe JSON parser/oversized-body errors.
 - [x] Route unexpected goal failures through shared middleware with a fixed safe log event; richer operational diagnostics remain in the startup/logging task.
 - [x] Stop logging/echoing registration payloads; return explicit 501 until real registration is implemented.
-- [ ] Validate environment configuration, allow deployment port, add sanitized logs and graceful shutdown.
+- [x] Validate environment configuration, allow deployment port, add safe startup/shutdown logs and bounded graceful shutdown.
 - [ ] Add appropriate security headers, request limits and explicit frontend origin policy when origins are known.
 - [x] Add test infrastructure and goal API validation/parser-error tests; document current contracts in API.md.
 
 M1 step 1: typecheck and build pass; 22 API subtests plus their parent pass (Node reports 23 tests). Tests verify invalid requests do not call the persistence test double and valid requests preserve the 201 contract. No Supabase access or schema changes. Zod 4.6.7 is the only added package; existing resolved versions/integrities are unchanged, while npm recalculated development flags for optional TypeScript platform packages. M1 remains in progress; registration-body exposure and other unchecked items are not solved yet.
 
 M1 step 2: typecheck and build pass; 27 API cases plus two parent tests pass (Node reports 29 tests). New cases verify registration does not log/echo synthetic credentials, unknown routes/methods return safe JSON, existing root/demo profile responses remain available, and simulated async persistence failure returns/logs no private details. No Supabase access, migration or dependency change. Remaining M1 tasks: environment validation, deployment port, startup logs/shutdown, headers, request limits and origin policy.
+
+M1 step 3: Zod validates DATABASE_URL syntax and PORT, defaulting the port to 3000. Server entry checks settings before loading Prisma; lifecycle logic connects before listening and safely disconnects after draining HTTP requests. Repeated shutdown requests share one cleanup operation. A 10-second deadline handles stuck HTTP/database cleanup; raw startup failures are not logged. Typecheck/build and 43 reported tests pass, including settings, occupied-port failure, active-request draining, timeout/error cases and entry-point SIGINT/SIGTERM event wiring. Tests use database stand-ins and do not verify OS signal delivery or live Supabase connectivity. No dependencies, schema, migrations or private environment values changed. Remaining M1 work is security headers, request rate limits and origin policy; richer observability can grow with deployment needs.
 
 Acceptance: malformed requests return safe actionable errors; valid goal behavior remains compatible; no raw credential bodies in output/logs. Do not expose the public write API as a finished multi-user product.
 

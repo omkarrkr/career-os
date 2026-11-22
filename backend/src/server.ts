@@ -1,22 +1,53 @@
 import "dotenv/config";
-import app from "./app.js";
-import prisma from "./config/prisma.js";
+import { createServer } from "node:http";
+import { readEnvironment } from "./config/env.js";
+import { startServer } from "./server-lifecycle.js";
 
-const PORT = 3000;
-
-async function startServer() {
+async function main() {
+    let settings: ReturnType<typeof readEnvironment>;
     try {
-        await prisma.$connect();
-
-        console.log("✅ Database connected");
-
-        app.listen(PORT, () => {
-            console.log(`🚀 Server is running on http://localhost:${PORT}`);
-        });
+        settings = readEnvironment();
     } catch (error) {
-        console.error("❌ Database connection failed:", error);
-        process.exit(1);
+        console.error(error instanceof Error ? error.message : "Invalid environment settings");
+        process.exitCode = 1;
+        return;
+    }
+
+    try {
+        // Validate settings before constructing the app's database client.
+        const { default: app } = await import("./app.js");
+        const { default: prisma } = await import("./config/prisma.js");
+        const server = createServer(app);
+        const lifecycle = await startServer(server, prisma, settings.PORT);
+
+        console.log("Database connected");
+        console.log(`Server is running on http://localhost:${settings.PORT}`);
+
+        let stopping = false;
+        const shutdown = (failed = false) => {
+            if (stopping) return;
+            stopping = true;
+            console.log("Server shutdown started");
+
+            void lifecycle.stop().then(() => {
+                console.log("Server shutdown completed");
+                process.exitCode = failed ? 1 : 0;
+            }).catch(() => {
+                console.error("Server shutdown failed or timed out");
+                process.exit(1);
+            });
+        };
+
+        process.on("SIGINT", () => shutdown());
+        process.on("SIGTERM", () => shutdown());
+        server.on("error", () => {
+            console.error("HTTP server error");
+            shutdown(true);
+        });
+    } catch {
+        console.error("Server startup failed. Check database connectivity and port availability.");
+        process.exitCode = 1;
     }
 }
 
-startServer();
+void main();
