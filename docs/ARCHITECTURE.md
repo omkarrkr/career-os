@@ -36,6 +36,8 @@ Prisma CLI uses `prisma7.config.ts`; package scripts select this filename explic
 
 ## Planned architecture
 
+M2 account/session design is now recorded in AUTH_DESIGN.md (23 November 2026), not implemented. Proposed User -> AuthSession -> RefreshToken records support short-lived signed access tokens, refresh rotation and server-side revocation. Goal.userId starts nullable for compatibility, then a reviewed backfill links confirmed legacy goals to a verified real owner before a later required-owner constraint. Password hashes/token hashes remain private; browser cookie endpoints require deliberate credentialed CORS and CSRF handling. The owner confirmed existing goals are theirs, but no destination account or exact legacy ID snapshot exists yet. Runtime, Prisma schema and remote database remain unchanged by this design checkpoint.
+
 Keep the existing Node, Express 5, PostgreSQL/Supabase and Prisma 7 stack. Use incremental layers:
 
 ```text

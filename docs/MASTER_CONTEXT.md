@@ -1,6 +1,6 @@
 # CareerOS master context
 
-Updated 22 November 2026. Use PROJECT_AUDIT.md for historical audit evidence and ROADMAP.md for the active milestone order. Reinspect actual code before relying on this snapshot.
+Updated 23 November 2026. Use PROJECT_AUDIT.md for historical audit evidence, ROADMAP.md for the active milestone order and AUTH_DESIGN.md for the proposed M2 design. Reinspect actual code before relying on this snapshot.
 
 ## Product and learning goal
 
@@ -16,6 +16,7 @@ CareerOS is a personal career operating system for students, graduates and job s
 - Prisma CLI/client/adapter are exactly pinned to 7.10.0 in manifest and lockfile; resolved packages were not upgraded.
 - On 22 November 2026, no-emit checking, compilation, client generation and schema validation pass. Read-only DB connectivity and Prisma migration status pass; the initial migration is finished. Compiled server startup connected before listening and GET / returned 200.
 - Existing local DATABASE_URL is private and unchanged. Earlier audit database failures did not recur; their cause remains unproven. M0 verification did not read application records, write data or apply migrations.
+- M2 design is documented only; no auth tables, migration or runtime authentication exists yet. On 23 November the owner confirmed all currently stored goals are theirs. Backfill must still target a captured legacy set and a verified future owner account, never the first signup. See AUTH_DESIGN.md for session/cookie/CSRF choices and migration prerequisites.
 
 ## Intended capabilities
 
@@ -61,4 +62,4 @@ The UI should be professional, responsive, accessible and consistent. Avoid hard
 
 ## Next recommended milestone
 
-M0 and the scoped M1 backend foundation are verified as of 22 November 2026. Typecheck/build and 52 reported tests pass, including HTTP security/header/origin/rate-limit behavior. The latest changes used no Supabase access. M2 is next: explain account/session design and a non-destructive ownership transition before implementing authentication. The app is still unauthenticated and not production-ready. Cookie/CSRF policy, trusted production proxies, shared rate-limit storage and operational observability must be revisited when their features/deployment are introduced. The audit itself made no application changes; subsequent changes and verification are tracked in ROADMAP.md and MILESTONE_NOTES.md.
+M0 and scoped M1 were verified on 22 November 2026 with 52 reported tests passing. On 23 November, M2 account/session and non-destructive ownership design was documented without code, schema or database changes. Next prepare/review an additive migration in isolation and establish backup readiness before any remote application. Proposed auth: bcrypt per original requirement, short-lived in-memory JWT access, HttpOnly rotating refresh cookie, hashed refresh records, session-based revocation checks and tested CSRF protection before browser cookie auth. The app remains unauthenticated and not production-ready. Exact token lifetimes are proposed defaults, not implemented configuration. Preserve existing goal data and do not infer destination ownership from signup order.

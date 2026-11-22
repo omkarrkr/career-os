@@ -350,3 +350,78 @@ Explain why a forbidden browser origin gets 403, too many requests get 429, but 
 M1 now provides input checks, safe API errors/placeholders, validated settings, safe startup/shutdown, HTTP headers, bounded requests and automated verification. It does not make CareerOS production-ready or multi-user secure. Next we will explain the User/session design and safe ownership migration before changing the database.
 
 References: [Helmet](https://github.com/helmetjs/helmet#readme), [Express CORS](https://expressjs.com/en/resources/middleware/cors/), [rate-limit configuration](https://github.com/express-rate-limit/express-rate-limit/blob/main/docs/reference/configuration.mdx).
+
+## M2, design step: accounts, sessions and keeping your old goals
+
+Date: 23 November 2026. Explanation/planning only: no application code, Prisma schema, migration or database data changed. The full technical plan is AUTH_DESIGN.md.
+
+### Start with an everyday example
+
+Imagine entering a college library. Your account is your identity record. Logging in is showing evidence that you are that person. A session is the library remembering your successful sign-in. An access token is a short-lived visitor badge. A refresh token is a private pass that can renew the badge. Checking whether you may edit a particular goal is like checking whose book-loan record you are allowed to change.
+
+### Registration, login and password hashes
+
+Registration creates your account. It will save your name, normalized unique email and a password hash. A hash is a one-way verifier, not a password we can decrypt. On login, bcrypt checks the attempted password against the saved verifier. We never save the original password or return the hash to the frontend.
+
+We retain bcrypt because it was part of the original project requirements. OWASP now prefers Argon2id for new systems; bcrypt has important input-length and cost constraints. We will respect its 72-byte limit rather than silently cutting passwords off, and benchmark its cost before release. Bytes are storage units, so 72 bytes is not necessarily 72 characters when a password contains Unicode/emoji. None of this is implemented yet.
+
+### Why sessions and two tokens?
+
+HTTP does not automatically remember who made an earlier request. After login, the frontend needs a credential for later API calls, without resending the password each time.
+
+Proposed access-token lifetime: 15 minutes. Keep it in frontend memory and send it as Authorization: Bearer <token>. Our JWT is signed so the server can detect alteration; its contents are readable, so it must contain identifiers and expiry rather than private information.
+
+Proposed session lifetime: 7 days absolute. Keep the random refresh token in an HttpOnly cookie: browser JavaScript cannot read that cookie. Only a hash of the random token is stored in the database. Each refresh replaces it. This is rotation: the old renewal pass stops working. Reusing an already consumed token closes that session; the frontend must coordinate refreshes so two tabs do not accidentally race.
+
+These durations are starting design choices, not standards or running features. Do not store tokens in localStorage/sessionStorage. Password hashes and refresh-token hashes solve different problems: human passwords need slow password hashing; high-entropy random tokens can use a cryptographic lookup hash.
+
+### Logout and authorization
+
+A JWT does not disappear merely because a user clicks logout. We will revoke its server-side session, clear the refresh cookie, and check session validity on protected requests. Subsequent requests then fail even if the access token has not expired yet. A request already authorized and running may finish. Password change will revoke all sessions.
+
+Authentication asks: who are you? Authorization asks: is this goal yours? If Alice owns goal 12, Bob must not read/change it merely by guessing 12. The server derives user identity from verified authentication, never from a userId supplied in the request body.
+
+### Cookies need another safety check
+
+Browsers automatically send cookies in some requests. CSRF is when another website tries to make a signed-in browser perform an unwanted action. HttpOnly, SameSite and CORS do not solve every case by themselves. We will build/test the CSRF checks and exact-origin rules before enabling cookie-based login/refresh/logout. Current CORS still disables cookie credentials; it will be updated deliberately alongside that feature.
+
+### Proposed database relationships
+
+```text
+User (your identity)
+  ├── Goals (your work)
+  └── AuthSessions (your signed-in devices/logins)
+         └── RefreshTokens (current and consumed renewal passes, stored as hashes)
+```
+
+A foreign key is a database rule that a reference must point to a real row. Goal.userId will refer to User.id. An index helps the database find a user's goals efficiently. We will not add automatic deletion rules that wipe goals when a user record is removed.
+
+### How we preserve your goals
+
+You confirmed all current goals are yours. We will still wait until your actual account exists and its intended identity is verified.
+
+1. Add the account/session tables and an optional owner field to Goal. Existing goals keep their IDs and every existing value; owner starts empty (NULL).
+2. Capture the exact intended old-goal set, verify your destination account and update only those unassigned goals in a reviewed transaction. This is a backfill: filling a new field on old rows. A transaction groups related changes so they succeed together or are rolled back.
+3. Check that no intended goals remain unassigned, then make the owner field required in a separate migration.
+
+Never assign old goals to the first signup. Never publish a claim-all-goals endpoint. During transition, unassigned goals are hidden from normal users. All new authenticated goals get their owner from the server's verified user identity.
+
+Before applying remote changes, check current metadata, review additive SQL, verify in an isolated test database, and confirm a usable backup/restore route. We do not reset Supabase, recreate the initial migration, or overwrite existing rows to make development easier. Adding compatible columns/tables can still require database locks, so review remains necessary.
+
+### What happens next?
+
+Small steps: draft/review additive schema -> isolated migration check and backup readiness -> real registration -> login/session/refresh/logout with CSRF -> protected profile/goals -> verified ownership backfill -> required ownership.
+
+No commands need to be run by you today. This is a docs-only checkpoint, so existing tests were not rerun or claimed as new verification. Later database tests will use isolated data, not your real goal records. Additional Supabase access is not needed for this planning step; we will explain any exact requirement when it arises.
+
+### Interview questions, mistakes and challenge
+
+Q: Why not store the password? A: A database leak should not immediately expose the original password. Store a suitable verifier and never log it.
+
+Q: Why have a session table with JWTs? A: We choose to check it so logout and password changes can revoke access before a JWT expires; this adds a deliberate database lookup.
+
+Q: Why add ownership as optional first? A: Existing rows have no user to reference yet. Optional ownership preserves them while we establish the correct identity and backfill safely.
+
+Common mistakes: confusing signed tokens with encrypted secrets; assuming login alone prevents cross-user access; trusting a client-supplied owner ID; assigning legacy data to the first registration; assuming an HttpOnly cookie eliminates CSRF.
+
+Challenge: Bob signs in correctly and asks to update one of your goals. Explain why authentication passes but authorization must deny the request. Then explain why the old goals should remain unassigned until your real account is verified.

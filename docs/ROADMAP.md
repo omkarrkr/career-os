@@ -1,6 +1,6 @@
 # CareerOS ordered development roadmap
 
-Updated 22 November 2026. Baseline: repository audit dated 17 November 2026. The owner has authorized continuing development in small, explained, verified steps and making Git checkpoints at stable milestones. Each milestone below is split into manageable tasks; completing the entire long-term backlog is not required for the first release.
+Updated 23 November 2026. Baseline: repository audit dated 17 November 2026. The owner has authorized continuing development in small, explained, verified steps and making Git checkpoints at stable milestones. Each milestone below is split into manageable tasks; completing the entire long-term backlog is not required for the first release.
 
 ## Release goal and scope
 
@@ -85,11 +85,15 @@ Acceptance: malformed requests return safe actionable errors; valid goal behavio
 
 ## Phase 2: authentication and users
 
-- [ ] Design User identity and migration strategy for existing unowned goals.
+- [x] Document proposed User/session/token design and staged ownership migration (23 November 2026; AUTH_DESIGN.md). No migration prepared/applied yet.
+- [ ] Establish backup readiness and capture legacy record metadata using read-only access; verify destination account before backfill.
+- [ ] Draft/review additive schema and migration; verify on an isolated database before remote application. Preserve initial migration and all goals.
 - [ ] Implement validated registration/login with password hashing and public-field responses.
 - [ ] Implement JWT/session expiry, refresh rotation/revocation where appropriate, logout and protected routes.
 - [ ] Add ownership enforcement, account/profile APIs and password change.
 - [ ] Test duplicate registration, invalid credentials, expired tokens and cross-user access.
+
+M2 design checkpoint (23 November): owner confirms all existing Supabase goals are theirs. Plan User/AuthSession/RefreshToken plus initially nullable indexed Goal.userId; do not auto-assign to first signup. Propose short-lived JWT access in memory and rotated HttpOnly refresh cookies with stored hashes/history, active-session checks for revocation and CSRF protection before cookie auth. Retain bcrypt per original requirement while documenting Argon2id as OWASP's modern preference and bcrypt's byte limit/work-factor constraints. Next steps are additive SQL preparation, isolated verification and backup readiness; no live connection, schema changes or row updates occurred in this documentation step. See AUTH_DESIGN.md and the simple walkthrough in MILESTONE_NOTES.md.
 
 Acceptance: two users cannot access each other's resources; existing data is preserved with explicit legitimate ownership decisions.
 
