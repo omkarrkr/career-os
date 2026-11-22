@@ -14,12 +14,25 @@ const environmentSchema = z.object({
     PORT: z.string().regex(/^\d+$/)
         .transform(Number)
         .pipe(z.number().int().min(1).max(65535)),
+    NODE_ENV: z.enum(["development", "test", "production"]),
+    CORS_ORIGINS: z.string()
+        .transform((value) => value.trim() === "" ? [] : value.split(",").map((origin) => origin.trim()))
+        .pipe(z.array(z.string().refine((value) => {
+            try {
+                const url = new URL(value);
+                return ["http:", "https:"].includes(url.protocol) && url.origin === value;
+            } catch {
+                return false;
+            }
+        }))),
 });
 
 export const readEnvironment = (source: NodeJS.ProcessEnv = process.env) => {
     const result = environmentSchema.safeParse({
         DATABASE_URL: source.DATABASE_URL,
         PORT: source.PORT ?? "3000",
+        NODE_ENV: source.NODE_ENV ?? "development",
+        CORS_ORIGINS: source.CORS_ORIGINS ?? "",
     });
 
     if (!result.success) {

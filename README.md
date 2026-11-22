@@ -158,8 +158,18 @@ From `backend`, run `npm.cmd test`. The Node test runner uses tsx to import Type
 |----------------|------------------------------|
 | `DATABASE_URL` | PostgreSQL connection string |
 | `PORT` | Optional HTTP port, integer 1-65535; defaults to 3000 |
+| `NODE_ENV` | development (default), test, or production |
+| `CORS_ORIGINS` | Comma-separated exact HTTP(S) frontend origins; absent/empty allows no explicit browser origins |
 
 Startup validates settings before constructing the database client. Missing/invalid settings produce a message containing setting names only and exit code 1. A well-formed URL can still have incorrect credentials or point to an unavailable database: syntax validation does not prove connectivity. If you select a different port, use that port in browser/API requests too. Never overwrite your working `.env` with the example template.
+
+## HTTP safeguards
+
+Helmet supplies security headers and hides Express's identifying header. HTTPS-only browser directives are enabled in production mode and disabled for local development; production hosting still must actually provide HTTPS.
+
+Set `CORS_ORIGINS=http://localhost:5173` locally when the future Vite frontend needs access. Origins must match exactly, with no path, credentials, wildcard or trailing slash; multiple origins are comma-separated. Your existing private `.env` was not modified. An explicit unapproved Origin receives JSON 403 before route processing. No-Origin clients such as PowerShell still work. CORS permissions currently cover GET/POST and Content-Type/Authorization, with cookie credentials disabled; revisit this deliberately when choosing the authentication session strategy. CORS is not authentication or a replacement for CSRF protection.
+
+API paths share a limit of 100 requests per IP per 15 minutes, counting successes and failures. Exceeding it returns JSON 429 with Retry-After and standard rate-limit headers. Approved CORS preflights and the root app-information route do not consume that budget. The counter is in memory per server process, resets on restart, and is not distributed DDoS protection; shared-IP users also share a budget. Express retains trust-proxy=false so caller-supplied forwarding headers cannot choose their own rate-limit identity. Review the actual trusted proxy chain and shared counter requirements before production deployment.
 
 ## Roadmap
 

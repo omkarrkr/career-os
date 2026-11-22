@@ -11,6 +11,8 @@ test("startup settings accept a PostgreSQL URL and default the HTTP port", () =>
     assert.deepEqual(readEnvironment({ DATABASE_URL: databaseUrl }), {
         DATABASE_URL: databaseUrl,
         PORT: 3000,
+        NODE_ENV: "development",
+        CORS_ORIGINS: [],
     });
     assert.equal(readEnvironment({ DATABASE_URL: databaseUrl, PORT: "8080" }).PORT, 8080);
     assert.equal(readEnvironment({ DATABASE_URL: databaseUrl, PORT: "65535" }).PORT, 65535);
@@ -28,6 +30,24 @@ test("rejects empty, zero, negative, fractional, malformed and out-of-range port
     for (const PORT of ["", " ", "0", "-1", "3.5", "65536", "abc", "3e3"]) {
         assert.throws(() => readEnvironment({ DATABASE_URL: databaseUrl, PORT }), {
             message: "Invalid environment settings: PORT",
+        });
+    }
+});
+
+test("validates runtime mode and exact HTTP origin lists without reflecting values", () => {
+    const settings = readEnvironment({
+        DATABASE_URL: databaseUrl,
+        NODE_ENV: "production",
+        CORS_ORIGINS: "https://career.example, http://localhost:5173",
+    });
+    assert.equal(settings.NODE_ENV, "production");
+    assert.deepEqual(settings.CORS_ORIGINS, ["https://career.example", "http://localhost:5173"]);
+    assert.throws(() => readEnvironment({ DATABASE_URL: databaseUrl, NODE_ENV: "invalid" }), {
+        message: "Invalid environment settings: NODE_ENV",
+    });
+    for (const CORS_ORIGINS of ["*", "null", "https://career.example/", "https://career.example/path", "https://user:secret@career.example", "https://career.example,,https://other.example"]) {
+        assert.throws(() => readEnvironment({ DATABASE_URL: databaseUrl, CORS_ORIGINS }), {
+            message: "Invalid environment settings: CORS_ORIGINS",
         });
     }
 });

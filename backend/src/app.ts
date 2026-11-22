@@ -2,25 +2,33 @@ import express from "express";
 import userRoutes from "./routes/user.routes.js";
 import goalRoutes from "./routes/goal.routes.js";
 import { errorHandler, notFoundHandler } from "./middleware/error.middleware.js";
+import { readEnvironment } from "./config/env.js";
+import { configureHttpSecurity } from "./middleware/security.middleware.js";
 
-const app = express();
+export const createApp = (settings = readEnvironment()) => {
+    const app = express();
 
-app.use(express.json());
+    configureHttpSecurity(app, settings);
+    app.use(express.json());
 
-app.get("/", (req, res) => {
-    res.json({
-        project: "CareerOS",
-        version: "1.0.0",
-        developer: "Omkar Kumar",
-        status: "Backend Running ✅"
+    app.get("/", (req, res) => {
+        res.json({
+            project: "CareerOS",
+            version: "1.0.0",
+            developer: "Omkar Kumar",
+            status: "Backend Running ✅"
+        });
     });
-});
 
-app.use("/api/users", userRoutes);
-app.use("/api/goals", goalRoutes);
-app.use(notFoundHandler);
-app.use(errorHandler);
+    app.use("/api/users", userRoutes);
+    app.use("/api/goals", goalRoutes);
+    app.use(notFoundHandler);
+    app.use(errorHandler);
 
+    return app;
+};
+
+const app = createApp();
 export default app;
 // res.send(`
 // <h1>🚀 Welcome to CareerOS Backend!</h1>

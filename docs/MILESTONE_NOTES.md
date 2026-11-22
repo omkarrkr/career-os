@@ -283,3 +283,70 @@ Common mistakes: confusing a valid-looking URL with a working login; logging who
 Challenge: a request is halfway through saving a goal when you press Ctrl+C. Explain why immediately disconnecting Prisma could break it, and what our shutdown order does instead.
 
 For the underlying Node behavior, see [HTTP server close](https://nodejs.org/api/http.html#serverclosecallback) and [signal events](https://nodejs.org/api/process.html#signal-events). Next: basic HTTP security headers, request rate limits and frontend-origin policy. M1 is still in progress.
+
+## M1, step 4: basic HTTP safeguards (M1 complete)
+
+### What we built, in simple words
+
+Imagine a reception desk. It checks the stated website address, gives browsers safety instructions, and stops one IP address from making unlimited API requests in a short time. These are useful safeguards, but the desk still needs proper user identification: that is M2 authentication and ownership.
+
+- Security headers: instructions attached to a response. Helmet adds them for us. For example, `nosniff` tells the browser to respect the declared content type instead of guessing. Helmet also removes the Express-identifying header.
+- Origin: a website's protocol + host + port, such as `http://localhost:5173`. A path is not part of an origin. Different ports are different origins.
+- CORS: browser permission rules for reading responses across origins. Our configuration lists exact approved origins; we also explicitly reject unapproved Origin headers before routes. Anyone can use a non-browser tool and omit/spoof Origin, so this never proves who a user is.
+- Preflight: a browser's OPTIONS request asking whether a cross-origin request method/headers are allowed. Approved preflights return 204 and do not use the API rate budget.
+- Rate limit: an upper request allowance. We currently allow 100 requests per IP in a 15-minute window on /api paths, counting failed requests too. The next request returns 429 with a Retry-After delay.
+- IP address: a network address, not a person. Classmates on the same network may share an address and budget. Authentication will later let some rules use user/account identity too.
+- Proxy: a server between the caller and our app. We do not blindly trust forwarding headers from callers. Hosting behind a real proxy needs a deliberately configured trust rule.
+
+### Settings and behavior
+
+NODE_ENV can be development (default), test or production. Production enables HTTPS-only browser directives; local development does not, avoiding unexpected localhost upgrades. Setting production mode does not create HTTPS itself: hosting must provide it.
+
+CORS_ORIGINS is a comma-separated list, for example `http://localhost:5173,https://career.example`. No wildcard, credentials, path or trailing slash is allowed. Leaving it absent/empty permits no explicit browser Origin values; PowerShell/no-Origin requests still work. The example file lists the future Vite development address, but your real `.env` was not edited. When we build the frontend, set its exact origin deliberately. CORS currently permits GET/POST and Content-Type/Authorization; cookie credentials are off until the session design is chosen.
+
+The rate counter is held in server memory. Restarting clears it, and separate server instances do not share it. A multi-instance deployment will need shared storage. This is basic API throttling, not protection against every large attack. Root app information remains reachable when the API limit is exhausted.
+
+### Files and request flow
+
+`src/middleware/security.middleware.ts` groups Helmet, origin policy and rate limiting. `config/env.ts` validates the new settings. `app.ts` now exports createApp so tests can create independent app instances while its default export still supports startup. Package files record the new middleware and TypeScript declarations; existing dependency versions were not upgraded.
+
+```text
+Request -> security headers -> origin check/CORS -> API rate limit
+        -> JSON parser -> controller validation -> service -> Prisma
+                   or -> safe 403/429 response before route/database work
+```
+
+The order matters: allowed browsers need CORS headers even on errors, and rate-limited requests should stop before expensive parsing/route work. Requests blocked by our origin guard return 403; requests allowed through the guard still need normal validation and, later, authentication.
+
+### What passed and how to repeat it
+
+Type checking, compilation and 52 reported tests pass (including two parent tests). New cases cover local/production headers, allowed origins/preflights, lookalike/null origins, blocked writes, empty configuration, CORS on validation errors, the 100/101 boundary and a spoofed forwarded-IP header. Everything used local servers and database stand-ins; Supabase was not accessed.
+
+```powershell
+Set-Location C:\PROJECTS\career-os\backend
+npm.cmd run typecheck
+npm.cmd run build
+npm.cmd test
+```
+
+Expect successful commands and 52 passing tests. These checks already ran; you can repeat them to see the behavior. To inspect headers manually on a running backend, use `Invoke-WebRequest -Uri http://localhost:3000/` and inspect its Headers property. The automated tests demonstrate rate limiting without filling your real database.
+
+### Interview Q&A and common mistakes
+
+Q: Does allowing only our frontend make an API private? A: No. Origin is not trusted identity, and non-browser clients do not have to follow browser CORS rules. We still need authentication and per-resource ownership checks.
+
+Q: Why use exact origins rather than `*`? A: Browser access should be deliberately limited to intended frontends, especially before introducing authenticated requests.
+
+Q: Why not trust every X-Forwarded-For header? A: An untrusted caller can forge it and change the apparent IP address to evade rate limits.
+
+Q: Why keep the counter in memory initially? A: It is simple for one process. Its restart/multi-instance limits are documented, and shared storage should be added when deployment requires it.
+
+Avoid treating CORS as login/CSRF protection, enabling cookie credentials casually, using a trailing slash in an origin, forcing HTTPS on local HTTP development, and describing process-local throttling as distributed protection.
+
+### Small challenge and milestone recap
+
+Explain why a forbidden browser origin gets 403, too many requests get 429, but a PowerShell request with no Origin can still reach an unauthenticated API. What protection is still missing? Answer: verified user identity and ownership authorization, which we build in M2.
+
+M1 now provides input checks, safe API errors/placeholders, validated settings, safe startup/shutdown, HTTP headers, bounded requests and automated verification. It does not make CareerOS production-ready or multi-user secure. Next we will explain the User/session design and safe ownership migration before changing the database.
+
+References: [Helmet](https://github.com/helmetjs/helmet#readme), [Express CORS](https://expressjs.com/en/resources/middleware/cors/), [rate-limit configuration](https://github.com/express-rate-limit/express-rate-limit/blob/main/docs/reference/configuration.mdx).
