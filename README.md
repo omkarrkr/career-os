@@ -14,7 +14,7 @@ CareerOS is a full-stack AI platform that helps engineering students with:
 
 ## Current Status
 
-The backend foundation is verified as of 22 November 2026: type checking, compilation, database connectivity, migration status and compiled startup pass. The frontend (React + TypeScript + Tailwind CSS) is **not yet built** — this repo currently contains only the Node.js/Express backend. User endpoints are placeholders, and goal creation is not yet authenticated or validated; this is not a production-ready multi-user API.
+The backend foundation is verified as of 22 November 2026: type checking, compilation, database connectivity, migration status and compiled startup pass. The frontend (React + TypeScript + Tailwind CSS) is **not yet built** — this repo currently contains only the Node.js/Express backend. Goal creation now validates input and has automated API tests. User endpoints are placeholders, and goal creation is not authenticated; this is not a production-ready multi-user API.
 
 The first release connects a target role, skill/project evidence, explained gaps, goals, a roadmap and a reviewed AI weekly plan. The features above describe the longer-term vision. See [the active milestones](docs/ROADMAP.md), [architecture](docs/ARCHITECTURE.md), [historical audit](docs/PROJECT_AUDIT.md) and [learning notes](docs/MILESTONE_NOTES.md).
 
@@ -144,7 +144,11 @@ Invoke-RestMethod -Uri http://localhost:3000/
 
 Expect `project: CareerOS` and `status: Backend Running`. Stop the server with Ctrl+C. The root route returns application information, not a continuous database readiness check. Do not run both modes on port 3000 at the same time.
 
-If the database check fails, preserve `.env` and collect only sanitized error details. If port 3000 is occupied, identify your existing server before stopping anything. No automated test suite exists yet; it is part of M1.
+If the database check fails, preserve `.env` and collect only sanitized error details. If port 3000 is occupied, identify your existing server before stopping anything.
+
+### Tests
+
+From `backend`, run `npm.cmd test`. The Node test runner uses tsx to import the TypeScript app. API tests start a temporary loopback server and replace Prisma goal writes with an in-memory test double using a dummy database URL; no Supabase connection or records are used. Tests cover invalid goal data, valid requests, deadlines, unexpected fields, malformed JSON and oversized bodies. See [API contracts](docs/API.md) and [learning notes](docs/MILESTONE_NOTES.md). These are API tests with database access replaced, not live-database integration tests.
 
 ## Environment Variables
 

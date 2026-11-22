@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test tests/*.test.mjs",
     "build": "tsc",
     "start": "node dist/server.js",
     "prisma:generate": "prisma generate --config prisma7.config.ts",
@@ -22,7 +23,8 @@
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "pg": "^8.23.0",
-    "prisma": "7.10.0"
+    "prisma": "7.10.0",
+    "zod": "4.6.7"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",

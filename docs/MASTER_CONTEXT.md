@@ -11,7 +11,8 @@ CareerOS is a personal career operating system for students, graduates and job s
 - Backend only: Node, TypeScript, Express 5, Prisma 7, PostgreSQL adapter, dotenv, tsx.
 - One Goal model and initial migration; only goal creation persists data.
 - Public static profile and request-echo registration are placeholders.
-- No frontend, actual accounts, AI provider integration, tests or deployment setup.
+- No frontend, actual accounts, AI provider integration or deployment setup. Automated goal API tests now run through Node's test runner with database access replaced in memory.
+- Goal creation uses Zod runtime validation; invalid fields return 400 with field messages. Final error middleware safely formats malformed JSON and oversized-body errors. Registration body exposure, JSON 404 and broader error/configuration standards remain pending under M1.
 - Prisma CLI/client/adapter are exactly pinned to 7.10.0 in manifest and lockfile; resolved packages were not upgraded.
 - On 22 November 2026, no-emit checking, compilation, client generation and schema validation pass. Read-only DB connectivity and Prisma migration status pass; the initial migration is finished. Compiled server startup connected before listening and GET / returned 200.
 - Existing local DATABASE_URL is private and unchanged. Earlier audit database failures did not recur; their cause remains unproven. M0 verification did not read application records, write data or apply migrations.
@@ -58,4 +59,4 @@ The UI should be professional, responsive, accessible and consistent. Avoid hard
 
 ## Next recommended milestone
 
-M0 is verified as of 22 November 2026. Next: M1 API safety in small steps (validation, safe errors, remove raw registration-body exposure), then M2 authentication/ownership. The audit itself made no application changes; subsequent changes and verification are tracked in ROADMAP.md and MILESTONE_NOTES.md.
+M0 is verified as of 22 November 2026. M1 step 1 adds goal validation, parser-error handling and automated API tests. Next remove registration body exposure and standardize remaining errors/JSON 404, then finish environment/security safeguards before M2 authentication/ownership. The audit itself made no application changes; subsequent changes and verification are tracked in ROADMAP.md and MILESTONE_NOTES.md.

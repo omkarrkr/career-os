@@ -10,7 +10,7 @@ server.ts -> load dotenv -> Prisma $connect -> app.listen(3000)
 HTTP JSON -> app.ts -> route -> controller -> service -> Prisma -> PostgreSQL
 ```
 
-`app.ts` constructs Express and mounts routers without opening a listening socket. `server.ts` owns startup and waits for the database before accepting connections. This separation lets tests import the app independently, although no automated tests exist yet.
+`app.ts` constructs Express and mounts routers without opening a listening socket. `server.ts` owns startup and waits for the database before accepting connections. This separation lets the automated goal API tests import the app independently and replace database writes in memory.
 
 - Routes select handlers by HTTP method and URL.
 - Controllers select request fields and form HTTP responses.
@@ -19,7 +19,7 @@ HTTP JSON -> app.ts -> route -> controller -> service -> Prisma -> PostgreSQL
 - `schema.prisma` describes the Goal record. SQL migrations describe changes to the database over time.
 - The generated Prisma client supplies database types and query methods; it is ignored and must be generated locally.
 
-The goal path is `POST /api/goals -> createGoalController -> createGoal -> prisma.goal.create -> PostgreSQL`. Profile returns static data; registration echoes input. Root information is returned directly from `app.ts`. There is no frontend or AI layer.
+The goal path is `POST /api/goals -> createGoalController -> Zod schema validation -> createGoal -> prisma.goal.create -> PostgreSQL`. Invalid input stops at the controller with a 400. The schema trims required strings and selects only supported fields. `middleware/error.middleware.ts` is mounted after routes to handle parser errors and otherwise unhandled errors safely. The goal controller's existing local 500 catch is still present. Profile returns static data; registration echoes input. Root information is returned directly from `app.ts`. There is no frontend or AI layer.
 
 ## Configuration and boundaries
 
@@ -41,7 +41,7 @@ React/TypeScript/Vite UI
                                -> private document storage (when required)
 ```
 
-Zod, bcrypt, JWT and the frontend stack are desired choices, not installed implementations. Prefer authentication before exposing more user-owned CRUD. Model User ownership explicitly. For existing Goal rows, plan a non-destructive ownership transition: inspect counts without exposing data, decide legitimate ownership, add a compatible nullable relation if needed, backfill deliberately, then enforce required ownership only after verification. Never assign old records arbitrarily to a new account.
+Zod is installed for goal input validation. bcrypt, JWT and the frontend stack remain planned. Prefer authentication before exposing more user-owned CRUD. Model User ownership explicitly. For existing Goal rows, plan a non-destructive ownership transition: inspect counts without exposing data, decide legitimate ownership, add a compatible nullable relation if needed, backfill deliberately, then enforce required ownership only after verification. Never assign old records arbitrarily to a new account.
 
 Add relational models only as their feature is implemented. User/Profile anchor skills, projects, goals and later roadmaps/applications. Multi-record writes should use transactions. Index ownership and proven query patterns; paginate lists. Document cascade/delete behavior before migrations.
 

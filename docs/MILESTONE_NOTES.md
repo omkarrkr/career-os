@@ -106,3 +106,66 @@ Avoid overwriting an existing `.env`, resetting a database to solve connectivity
 ### Small challenge and next task
 
 Explain why the backend should wait for its database before listening. Then describe why a goal with a missing title should produce a clear client error rather than an unexplained 500. That second question leads into M1: request validation and API safety. M0 is now verified; no authentication or production-readiness claim is implied.
+
+## M1, step 1: goal validation and safe parser errors
+
+### Feature and project notes
+
+Invalid goal requests now stop before database access. Zod 4.6.7 was added as the only new package. `src/schemas/goal.schema.ts` defines accepted fields. The goal controller uses validated output, returning 400 with field messages on failure; valid requests keep the existing 201 response. See API.md for exact limits and date formats. No authentication, schema migration or database write was added by this task.
+
+### New concepts in simple words
+
+- Validation: checking information before using it. TypeScript cannot stop someone sending a number as a title over HTTP; a runtime validator can.
+- Schema: a checklist describing accepted data. This request schema is distinct from Prisma's database schema: one checks API input, the other describes stored records.
+- `safeParse`: checks an unknown value and returns either validated data or a list of problems, letting the controller choose a response without using an exception for ordinary invalid input.
+- Middleware: a function Express runs during request processing. Error middleware has four parameters, including `next`, so Express recognizes its special role.
+- JSON parsing: converting the request's text into JavaScript data. Malformed JSON fails here, before field validation can run.
+- Test double: a stand-in for a real dependency. API tests replace Prisma goal creation so they can exercise HTTP behavior without changing the real database.
+- HTTP 400 means invalid request; 413 means body too large; 415 means unsupported request format/encoding; 500 means an unexpected server failure. A 201 still means a goal was created.
+
+### Data flow and important decisions
+
+Request -> Express JSON parser -> route -> controller/schema -> service -> Prisma -> database. Parser failures skip the route and reach final error middleware. Validation failures return 400 without calling the service. The controller passes `result.data`, not the original request body, so trimming and supported-field selection actually take effect.
+
+Titles/categories are trimmed and bounded; descriptions are optional and preserve empty strings. Categories remain free text rather than introducing an enum prematurely. Deadlines accept valid calendar dates or timezone-qualified timestamps; ambiguous local timestamps and impossible calendar dates are rejected. Extra fields are ignored as before and cannot set id/status. Date-only values retain the existing service's UTC-midnight interpretation; future calendar semantics need an explicit product decision.
+
+The final error middleware formats malformed JSON/oversized bodies, preserves other parser 4xx statuses with a generic response, and hides unexpected error details. It does not yet replace the goal controller's local catch/log. JSON 404 and removal of registration's raw-body logging/echo are still pending. Tests caught the parser returning HTML for a null body; fixing the parser-error boundary made that behavior safe JSON instead.
+
+### Run and verify
+
+From PowerShell:
+
+```powershell
+Set-Location C:\PROJECTS\career-os\backend
+npm.cmd run typecheck
+npm.cmd run build
+npm.cmd test
+```
+
+Expected: successful compilation and 23 passing tests (22 API subtests plus their parent). Tests start a temporary local server, use a dummy database URL and replace Prisma writes; they do not query Supabase. They cover rejected field/body values, date formats, ignored extra fields, successful responses, parser failures and no persistence calls for invalid requests. This does not test real PostgreSQL insertion or authorization.
+
+To try a safe invalid request manually, start `npm.cmd run dev`, then in a second PowerShell terminal run:
+
+```powershell
+try {
+    Invoke-RestMethod -Uri http://localhost:3000/api/goals -Method Post -ContentType application/json -Body '{"title":"   ","category":"Development"}'
+} catch {
+    $_.ErrorDetails.Message
+}
+```
+
+Expect 400 with `Invalid goal data` and a title error. No goal is inserted for that invalid request. Valid manual requests would write to the configured database, so use the automated test suite for repeated success checks.
+
+### Interview Q&A
+
+Q: Why do we need validation when we use TypeScript? A: TypeScript checks our source code, while incoming HTTP data comes from outside that type system.
+
+Q: Why use validated data afterward? A: It contains the checked/normalized fields; using the original body would discard those guarantees.
+
+Q: Why is error middleware mounted after routes? A: Errors flow forward through Express's registered handlers, so the final handler can catch parser and route errors.
+
+### Common mistakes and challenge
+
+Avoid returning entire invalid payloads, treating client mistakes as 500s, relying only on `new Date` to detect impossible calendar dates, and running tests against real user data. A test double proves HTTP-to-service behavior, not live database integration.
+
+Challenge: predict the response to `{ "title": " Learn SQL ", "category": "Development", "status": "COMPLETED" }`. Explain which fields reach Prisma and why the client cannot choose status through this endpoint.

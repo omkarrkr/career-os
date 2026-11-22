@@ -1,6 +1,7 @@
 import express from "express";
 import userRoutes from "./routes/user.routes.js";
 import goalRoutes from "./routes/goal.routes.js";
+import { errorHandler } from "./middleware/error.middleware.js";
 
 const app = express();
 
@@ -17,6 +18,7 @@ app.get("/", (req, res) => {
 
 app.use("/api/users", userRoutes);
 app.use("/api/goals", goalRoutes);
+app.use(errorHandler);
 
 export default app;
 // res.send(`

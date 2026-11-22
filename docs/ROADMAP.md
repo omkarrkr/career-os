@@ -66,11 +66,14 @@ New generate/validate/typecheck/build scripts pass; the status script points to 
 ## Phase 1: backend/API standards
 
 - [ ] Define public response/error conventions and JSON 404 behavior.
-- [ ] Introduce central error handling and Zod validation for goal creation.
+- [x] Add Zod validation for goal creation and safe JSON parser/oversized-body errors.
+- [ ] Finish centralized goal-service error handling and safe operational logging.
 - [ ] Stop logging/echoing unrestricted registration payloads; explicitly handle placeholder behavior until real registration is ready.
 - [ ] Validate environment configuration, allow deployment port, add sanitized logs and graceful shutdown.
 - [ ] Add appropriate security headers, request limits and explicit frontend origin policy when origins are known.
-- [ ] Add test infrastructure and meaningful API validation/error tests; document APIs.
+- [x] Add test infrastructure and goal API validation/parser-error tests; document current contracts in API.md.
+
+M1 step 1: typecheck and build pass; 22 API subtests plus their parent pass (Node reports 23 tests). Tests verify invalid requests do not call the persistence test double and valid requests preserve the 201 contract. No Supabase access or schema changes. Zod 4.6.7 is the only added package; existing resolved versions/integrities are unchanged, while npm recalculated development flags for optional TypeScript platform packages. M1 remains in progress; registration-body exposure and other unchecked items are not solved yet.
 
 Acceptance: malformed requests return safe actionable errors; valid goal behavior remains compatible; no raw credential bodies in output/logs. Do not expose the public write API as a finished multi-user product.
 
