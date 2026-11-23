@@ -425,3 +425,40 @@ Q: Why add ownership as optional first? A: Existing rows have no user to referen
 Common mistakes: confusing signed tokens with encrypted secrets; assuming login alone prevents cross-user access; trusting a client-supplied owner ID; assigning legacy data to the first registration; assuming an HttpOnly cookie eliminates CSRF.
 
 Challenge: Bob signs in correctly and asks to update one of your goals. Explain why authentication passes but authorization must deny the request. Then explain why the old goals should remain unassigned until your real account is verified.
+
+## AI planning question: will Gemini's limits block CareerOS?
+
+Checked against Google's official documentation on 23 November 2026. No AI provider is integrated yet; Gemini remains a candidate, and our provider interface is planned so alternatives can be evaluated later. No account quotas were inspected, billing enabled, credentials requested or API calls made by this research.
+
+### Four different limits, in simple words
+
+- Requests per minute: how many AI calls can be started in a minute.
+- Tokens per minute: how much input text can be processed within a minute. A token is a small piece of text, not exactly a word.
+- Requests per day: a daily call allowance where applicable.
+- Context window: how much a particular model can handle in one interaction, including the model's input/output constraints. This is separate from a daily allowance.
+
+Google's rate limits depend on model, project tier and account state. The active allowance is shown in AI Studio; it is not a universal fixed number for every Gemini user. Quotas apply per project, not per API key, so multiple keys for the same project do not multiply the allowance. When CareerOS uses one backend project, its users share that project's AI capacity. Paid service offers higher limits, not unlimited service. The Gemini app and programmatic API have different usage arrangements; subscription benefits/credits must be checked rather than assumed to grant unlimited backend calls.
+
+### Example, not a real Gemini quota
+
+Suppose a project had 50 AI calls per day. Ten students generating five drafts each would use all 50. But ten students opening a previously saved plan 20 times each need not make any new AI calls: CareerOS can read the saved plans from PostgreSQL. The actual model/project limit must be measured before promising a number of supported users.
+
+### Our implementation direction
+
+Use ordinary backend code for goal CRUD, profiles, progress calculations and documented skill requirement comparisons. Ask AI for a proposed weekly plan only on an explicit user action. Validate it, let the user review it, and save the accepted plan. Reopening it reads the database. Reuse results only within the correct user's permissions and only when relevant inputs are unchanged.
+
+During development, use fictional profiles and test doubles for most tests. Add per-user AI quotas, a project-wide allowance, bounded inputs/outputs, measured token usage/cost, duplicate-request prevention, controlled retries and clear quota-exhausted behavior. Minute-limit errors may permit a delayed retry; repeating a daily-exhausted request immediately will not create new capacity. Ordinary app features should keep working when AI is unavailable. Existing API throttling is a different safeguard and does not itself enforce provider-wide AI quotas or a spending budget.
+
+Paid inference is commonly priced by input/output tokens, with model/tool-specific additions. Estimate from observed usage and the chosen model's current prices; do not promise a fixed rupee cost or treat a billing alert as a guaranteed hard stop. Application-level allowances should enforce our own usage policy, alongside provider billing controls where available. No payment is needed for the current authentication work.
+
+### Data handling matters as well as price
+
+Google's unpaid-service terms say not to submit personal, confidential or sensitive information and describe product-improvement use of submitted content. Use fictional data for free-tier experiments. Before processing real resumes or personal career context, select suitable paid/provider terms, minimize/redact data and explain the processing to users. Paid terms distinguish product-improvement use but still describe limited safety-related logging; paid does not mean nothing is retained. Do not silently switch providers with private user data.
+
+### What this means for our project
+
+Free quotas can be useful for controlled prototyping, but cannot be assumed sufficient for every demo or public launch. Choose the actual model, check our project's active quota, test output quality and measure a small real workload at M6. Then decide whether free access, a controlled paid budget or another evaluated provider fits. CareerOS can be a valuable deployed application without unlimited AI or a paid API during early development.
+
+Challenge: why should viewing a saved roadmap use zero new AI calls, while pressing Regenerate may use one or more? Why do 100 allowed CareerOS API requests not necessarily mean 100 available Gemini requests?
+
+References: [Gemini rate limits](https://ai.google.dev/gemini-api/docs/rate-limits), [pricing](https://ai.google.dev/gemini-api/docs/pricing), [billing](https://ai.google.dev/gemini-api/docs/billing), [data-use terms](https://ai.google.dev/gemini-api/terms), [Google's subscription/API credit explanation](https://blog.google/innovation-and-ai/technology/developers-tools/google-cloud-credits-gdp-ai-studio/). Recheck these changing details when AI integration begins.
