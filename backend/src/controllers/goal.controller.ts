@@ -1,6 +1,28 @@
 import type { Request, Response } from "express";
-import { createGoal } from "../services/goal.service.js";
-import { createGoalSchema } from "../schemas/goal.schema.js";
+import { createGoal, listGoals, getGoal } from "../services/goal.service.js";
+import { createGoalSchema, goalIdSchema, listGoalsSchema } from "../schemas/goal.schema.js";
+import { invalidSession } from "../utils/auth-tokens.js";
+import { ApiError } from "../utils/api-error.js";
+
+const ownerId = (res: Response): number => {
+    const id: unknown = res.locals.auth?.userId;
+    if (typeof id !== "number") throw invalidSession();
+    return id;
+};
+
+export const listGoalsController = async (req: Request, res: Response) => {
+    const parsed = listGoalsSchema.safeParse(req.query);
+    if (!parsed.success) throw new ApiError(400, "Invalid goal query");
+    res.json(await listGoals(ownerId(res), parsed.data.limit, parsed.data.afterId));
+};
+
+export const getGoalController = async (req: Request, res: Response) => {
+    const parsed = goalIdSchema.safeParse(req.params.id);
+    if (!parsed.success) throw new ApiError(400, "Invalid goal ID");
+    const goal = await getGoal(ownerId(res), parsed.data);
+    if (!goal) throw new ApiError(404, "Goal not found");
+    res.json({ data: goal });
+};
 
 export const createGoalController = async (
     req: Request,
@@ -21,7 +43,7 @@ export const createGoalController = async (
 
     const { title, description, category, targetDate } = result.data;
 
-    const goal = await createGoal(title, description, category, targetDate);
+    const goal = await createGoal(ownerId(res), title, description, category, targetDate);
 
     res.status(201).json({
         message: "Goal created successfully",

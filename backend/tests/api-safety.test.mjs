@@ -41,7 +41,7 @@ test("invalid registration and unknown routes return safe JSON", async (t) => {
         });
 
         await t.test("unsupported method on an existing path returns JSON 404", async () => {
-            const response = await fetch(`${base}/api/goals`, { method: "DELETE" });
+            const response = await fetch(`${base}/api/users/profile`, { method: "DELETE" });
             assert.equal(response.status, 404);
             assert.deepEqual(await response.json(), { message: "Route not found" });
         });

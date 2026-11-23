@@ -6,7 +6,34 @@ import { PGlite } from "@electric-sql/pglite";
 
 const initialSql = await readFile(new URL("../prisma/migrations/20260915165713_init/migration.sql", import.meta.url), "utf8");
 const migrationSql = await readFile(new URL("../prisma/migrations/20261123140042_add_auth_sessions_and_goal_owner/migration.sql", import.meta.url), "utf8");
+const goalSecuritySql = await readFile(new URL("../prisma/migrations/20261124120000_protect_goal_data_api/migration.sql", import.meta.url), "utf8");
 const rejectsWithCode = (operation, code) => assert.rejects(operation, (error) => error.code === code);
+
+test("Goal RLS migration preserves rows, denies ordinary roles and refuses unexpected policies", async () => {
+    const db = new PGlite();
+    try {
+        await db.exec(initialSql); await db.exec(migrationSql);
+        await db.exec(`INSERT INTO "Goal" (title,category) VALUES ('Fictional legacy goal','Development');
+            CREATE POLICY unexpected_policy ON "Goal" FOR SELECT USING (true);`);
+        const before = (await db.query('SELECT * FROM "Goal"')).rows;
+        await rejectsWithCode(db.exec(goalSecuritySql), "P0001");
+        await db.exec("ROLLBACK");
+        assert.equal((await db.query(`SELECT relrowsecurity FROM pg_class WHERE oid='public."Goal"'::regclass`)).rows[0].relrowsecurity, false);
+        assert.deepEqual((await db.query('SELECT * FROM "Goal"')).rows, before);
+        await db.exec('DROP POLICY unexpected_policy ON "Goal"');
+        await db.exec(goalSecuritySql);
+        assert.deepEqual((await db.query('SELECT * FROM "Goal"')).rows, before);
+        await db.exec(`CREATE ROLE goal_untrusted_test NOLOGIN;
+            GRANT USAGE ON SCHEMA public TO goal_untrusted_test;
+            GRANT SELECT,INSERT ON "Goal" TO goal_untrusted_test;
+            GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO goal_untrusted_test;
+            SET ROLE goal_untrusted_test;`);
+        try {
+            assert.equal((await db.query('SELECT * FROM "Goal"')).rows.length, 0);
+            await rejectsWithCode(db.query(`INSERT INTO "Goal" (title,category) VALUES ('Denied','Development')`), "42501");
+        } finally { await db.exec("RESET ROLE"); }
+    } finally { await db.close(); }
+});
 
 test("auth foundation migration preserves legacy goals and enforces relational constraints", async (t) => {
     // PGlite is an embedded PostgreSQL engine. No URL, network or real records.

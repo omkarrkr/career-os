@@ -92,8 +92,9 @@ Acceptance: malformed requests return safe actionable errors; valid goal behavio
 - [x] Implement validated registration, bcrypt hashing, safe public fields, unique-email race handling and signup throttling.
 - [x] Implement login and verify credentials without exposing account/password details.
 - [x] Implement JWT/session expiry, refresh rotation/revocation, logout and protected profile. Goal ownership remains below.
-- [ ] Add ownership enforcement, account/profile APIs and password change.
-- [ ] Test duplicate registration, invalid credentials, expired tokens and cross-user access.
+- [x] Protect goal creation/list/detail with session-derived ownership; close ordinary direct Goal Data API access.
+- [ ] Verify actual owner account, backfill confirmed legacy goals, enforce required ownership and implement password change.
+- [x] Test duplicate registration, invalid/expired/revoked sessions and cross-user goal create/read isolation. Future update/delete ownership tests remain.
 
 M2 design checkpoint (23 November): owner confirms all existing Supabase goals are theirs. Plan User/AuthSession/RefreshToken plus initially nullable indexed Goal.userId; do not auto-assign to first signup. Propose short-lived JWT access in memory and rotated HttpOnly refresh cookies with stored hashes/history, active-session checks for revocation and CSRF protection before cookie auth. Retain bcrypt per original requirement while documenting Argon2id as OWASP's modern preference and bcrypt's byte limit/work-factor constraints. Next steps are additive SQL preparation, isolated verification and backup readiness; no live connection, schema changes or row updates occurred in this documentation step. See AUTH_DESIGN.md.
 
@@ -104,6 +105,9 @@ M2 database rollout (23 November): migration `20261123140042_add_auth_sessions_a
 M2 registration (verified 24 November): name/email/password validation, lowercased email identity, byte-bounded password policy, async bcrypt cost 12, public-field-only responses and 10-attempt/IP/15-minute signup throttling implemented. PostgreSQL uniqueness resolves races; the actual Prisma adapter constraint metadata was verified through isolated integration tests, then handled without exposing raw details. Typecheck/build and 72 default tests plus five isolated PostgreSQL integration tests pass. Tests create fictional local accounts only; no Supabase records/schema were changed and no legacy goal was claimed. Login/session/CSRF/ownership remain pending. Comprehensive compromised-password screening, verification/recovery and production abuse controls remain public-launch work.
 
 M2 login/session step (24 November): credential login, 15-minute access JWTs capped by seven-day absolute sessions, hashed rotating HttpOnly refresh cookies, committed replay/concurrent-use revocation, session-bound CSRF, protected real-user profile and dedicated auth/login limits implemented. Typecheck/build, 79 default tests and eight isolated native PostgreSQL session tests pass; the five registration integration tests also pass. No Supabase writes, schema change or legacy ownership assignment. Goal authorization, actual owner identity/backfill, password change and cross-user resource tests remain required before M2 is complete.
+
+
+M2 owned-goal step (24 November): protected create/list/detail, server-derived owner, bounded cursor pagination and consistent 404 denial implemented. Goal RLS guard closes ordinary direct Data API access and refuses unexpected preexisting policies. Fresh scoped backup/restore and exact native SQL rehearsal precede deployment; existing goal fields/NULL owner are preserved. Typecheck/build, 80 default tests and 22 native integration tests pass (including parent counts). Actual account verification/backfill, required ownership and password change remain M2 work; update/delete and further goal management remain Phase 4 work.
 
 Acceptance: two users cannot access each other's resources; existing data is preserved with explicit legitimate ownership decisions.
 
@@ -118,7 +122,8 @@ Acceptance: an authenticated user edits their profile and sees persisted real da
 
 ## Phase 4: goals, tasks and skills
 
-- [ ] Add owned goal list/detail/update/delete, bounded pagination, search/filter/sort.
+- [x] Add owned goal list/detail and bounded cursor pagination.
+- [ ] Add owned goal update/delete and search/filter/sort.
 - [ ] Add priorities, deadlines, subtasks, completion and overdue views.
 - [ ] Add skill catalog/user proficiency, categories and learning progress.
 - [ ] Build connected goal/skill UI and test ownership and progress calculations.

@@ -1,14 +1,21 @@
 import assert from "node:assert/strict";
 import { once } from "node:events";
 import test from "node:test";
+import { randomUUID } from "node:crypto";
+import { tokenTools } from "../src/utils/auth-tokens.ts";
 
 // Deliberately use a non-production URL. All Prisma writes are replaced below.
 process.env.DATABASE_URL = "postgresql://test:test@127.0.0.1:1/careeros_test";
 const { default: app } = await import("../src/app.ts");
 const { default: prisma } = await import("../src/config/prisma.ts");
 
-test("goal creation validates requests before database access", async (t) => {
+test("goal creation validates authenticated requests before goal writes", async (t) => {
     const writes = [];
+    const sessionId = randomUUID();
+    const expiresAt = new Date(Date.now() + 60000);
+    const token = await tokenTools(process.env).issue(21, sessionId, expiresAt);
+    const originalSession = prisma.authSession.findUnique;
+    prisma.authSession.findUnique = async () => ({ id: sessionId, userId: 21, expiresAt, revokedAt: null });
     const originalCreate = prisma.goal.create;
     prisma.goal.create = async ({ data }) => {
         writes.push(data);
@@ -26,7 +33,7 @@ test("goal creation validates requests before database access", async (t) => {
     const base = `http://127.0.0.1:${server.address().port}`;
     const post = (body) => fetch(`${base}/api/goals`, {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: { "content-type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify(body),
     });
 
@@ -99,7 +106,7 @@ test("goal creation validates requests before database access", async (t) => {
             const body = await response.json();
             assert.equal(body.message, "Goal created successfully");
             assert.equal(body.data.title, "Learn SQL");
-            assert.deepEqual(writes.at(-1), { title: "Learn SQL", category: "Development" });
+            assert.deepEqual(writes.at(-1), { title: "Learn SQL", category: "Development", userId: 21 });
         });
 
         for (const [input, expected] of [
@@ -121,7 +128,7 @@ test("goal creation validates requests before database access", async (t) => {
             assert.equal((await response.json()).data.status, "ACTIVE");
             assert.equal(Object.hasOwn(writes.at(-1), "id"), false);
             assert.equal(Object.hasOwn(writes.at(-1), "status"), false);
-            assert.equal(Object.hasOwn(writes.at(-1), "userId"), false);
+            assert.equal(writes.at(-1).userId, 21);
         });
 
         await t.test("async persistence failure reaches shared handler without exposing raw details", async (t) => {
@@ -143,6 +150,7 @@ test("goal creation validates requests before database access", async (t) => {
         });
     } finally {
         prisma.goal.create = originalCreate;
+        prisma.authSession.findUnique = originalSession;
         await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
     }
 });

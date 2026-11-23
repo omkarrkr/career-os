@@ -14,7 +14,7 @@ CareerOS is a full-stack AI platform that helps engineering students with:
 
 ## Current Status
 
-The backend foundation is verified. The frontend (React + TypeScript + Tailwind CSS) is **not yet built** — this repo currently contains only the Node.js/Express backend. Goal creation validates input and registration creates users with bcrypt-hashed passwords and public-field-only responses. Login, refresh rotation, logout and a protected real-user profile are implemented. Goal creation still lacks ownership enforcement; this is not a production-ready multi-user API.
+The backend foundation is verified. The frontend (React + TypeScript + Tailwind CSS) is **not yet built** — this repo currently contains only the Node.js/Express backend. Goal creation validates input and registration creates users with bcrypt-hashed passwords and public-field-only responses. Login, refresh rotation, logout and a protected real-user profile are implemented. Goal creation/list/detail now require a valid session and restrict access to the signed-in owner. Existing unassigned goals stay hidden pending verified account linkage; this is not a production-ready multi-user API.
 
 The first release connects a target role, skill/project evidence, explained gaps, goals, a roadmap and a reviewed AI weekly plan. The features above describe the longer-term vision. See [the active milestones](docs/ROADMAP.md), [architecture](docs/ARCHITECTURE.md) and [historical audit](docs/PROJECT_AUDIT.md).
 
@@ -57,7 +57,7 @@ backend/
 │   │   ├── user.service.ts      # Registration and public profile lookup
 │   │   └── auth.service.ts      # Credential login, session/refresh rotation and revocation
 │   ├── routes/             # Express routers
-│   │   ├── goal.routes.ts       # POST /api/goals
+│   │   ├── goal.routes.ts       # Owned create/list/detail
 │   │   ├── user.routes.ts       # Protected profile, public registration
 │   │   └── auth.routes.ts       # CSRF bootstrap, login, refresh and logout
 │   ├── middleware/         # HTTP security, bearer authentication and safe errors
@@ -86,14 +86,16 @@ model Goal {
 }
 ```
 
-This Goal field excerpt omits relation/index declarations; see the active Prisma schema for the full definition. User, AuthSession and RefreshToken support registration and login/session logic. Goal ownership remains optional and enforcement is pending.
+This Goal field excerpt omits relation/index declarations; see the active Prisma schema for the full definition. User, AuthSession and RefreshToken support registration and login/session logic. Legacy Goal ownership remains nullable; new writes derive userId from the session and reads filter by owner. The Goal Data API is restricted with RLS; existing goals remain unassigned until explicit owner verification/backfill.
 
 ## API Endpoints
 
 | Method | Path                  | Description              |
 |--------|-----------------------|--------------------------|
 | GET    | `/`                   | Health check / app info  |
-| POST   | `/api/goals`          | Create a new goal        |
+| POST   | `/api/goals`          | Create a goal owned by the signed-in account |
+| GET    | `/api/goals`           | List own goals with bounded cursor pagination |
+| GET    | `/api/goals/:id`       | Read own goal; foreign/legacy/missing returns 404 |
 | GET    | `/api/users/profile`   | Return authenticated account's public profile |
 | POST   | `/api/users/register`  | Validate signup, hash password and create a user; return public fields |
 | GET    | `/api/auth/csrf`       | Bootstrap session-bound CSRF protection |
@@ -167,7 +169,7 @@ From `backend`, run `npm.cmd test`. The Node test runner uses tsx to import Type
 
 Migration `20261123140042_add_auth_sessions_and_goal_owner` adds account/session tables and nullable Goal.userId, with indexes, restrictive foreign keys and RLS on the three credential/session tables. It was rehearsed on an isolated native PostgreSQL 17 restore, then applied on 23 November 2026. Existing goal values and original migration history were preserved; no ownership backfill or account creation occurred during migration. Registration now creates accounts but does not sign them in or claim old goals.
 
-The active schema/migrations are authoritative; [the proposal folder](backend/prisma/proposals/auth/README.md) is now historical reference. `npm.cmd run test:migration:auth` tests the committed migration against fictional old goals in PGlite, including preservation, uniqueness, references, transaction rollback and ordinary-role RLS denial. The default suite currently reports 79 passing tests. Keep backup/recovery artifacts local and ignored. For another environment, review pending SQL and deployment readiness before applying committed migrations with `prisma migrate deploy --config prisma7.config.ts`; regenerate the runtime client after its target schema is compatible. Do not replay the archived proposal SQL or edit applied migration history.
+The active schema/migrations are authoritative; [the proposal folder](backend/prisma/proposals/auth/README.md) is now historical reference. `npm.cmd run test:migration:auth` tests the committed migration against fictional old goals in PGlite, including preservation, uniqueness, references, transaction rollback and ordinary-role RLS denial. The default suite currently reports 80 passing tests. Keep backup/recovery artifacts local and ignored. For another environment, review pending SQL and deployment readiness before applying committed migrations with `prisma migrate deploy --config prisma7.config.ts`; regenerate the runtime client after its target schema is compatible. Do not replay the archived proposal SQL or edit applied migration history.
 
 ### Registration
 
@@ -177,11 +179,19 @@ POST /api/users/register accepts name, email and password; see [the API contract
 
 ### Login and sessions
 
-See [the authentication API flow](docs/API.md#browser-authentication-and-sessions). Access JWTs last up to 15 minutes and are checked against a database session on protected requests. HttpOnly refresh cookies rotate on use; consumed-token reuse revokes the session. Sessions expire absolutely after seven days. Logout revokes the current session and clears cookies. The profile route now returns only the authenticated account’s public fields. Goal ownership and password change remain pending.
+See [the authentication API flow](docs/API.md#browser-authentication-and-sessions). Access JWTs last up to 15 minutes and are checked against a database session on protected requests. HttpOnly refresh cookies rotate on use; consumed-token reuse revokes the session. Sessions expire absolutely after seven days. Logout revokes the current session and clears cookies. The profile route now returns only the authenticated account’s public fields. Owned goal creation/list/detail are implemented. Verified legacy backfill, update/delete and password change remain pending.
 
 Set both auth secrets in your private backend/.env using independent crypto.randomBytes(32) values encoded as hex; placeholders in .env.example are intentionally invalid. Never use the public test-only keys from tests/setup-env.mjs for a real environment. Keep access/CSRF tokens in memory in the future UI, and serialize refresh requests across tabs. Production requires HTTPS and same-site frontend/backend hosting under the current cookie policy.
 
 `npm.cmd run test:integration:auth` requires a fresh local PostgreSQL database named `careeros_test_auth_<suffix>` through TEST_DATABASE_URL. It refuses non-loopback targets, URL query overrides and nonempty schemas, applies committed migrations and inserts fictional fixtures. It verifies credential failures, public profiles, rotation, replay, concurrent refresh, logout and expiry. The separately run native suite reports eight passing tests including its parent; registration still reports five.
+
+### Goal ownership
+
+Goal routes require a valid Bearer token and active session. POST assigns ownership from that session, ignoring a submitted userId. GET list/detail query only the signed-in owner; foreign/missing/NULL-owned goal details share a 404 response. Lists use limit (default 20, maximum 50) and afterId cursor pagination. Update/delete remain later work.
+
+Migration 20261124120000_protect_goal_data_api enables Goal RLS without public policies, preventing ordinary direct Supabase API access from bypassing the backend. It was applied after a fresh scoped backup/restore proof and native PostgreSQL rehearsal; goal rows and unassigned ownership were preserved. Backend owner/admin roles still need application ownership checks.
+
+`npm.cmd run test:integration:goals` requires a fresh loopback database named careeros_test_goals_<suffix> through TEST_DATABASE_URL, refuses query overrides/nonempty schemas, and verifies two-user isolation, spoofed ownership, legacy preservation, pagination, revocation and direct-role RLS denial. Nine reported tests pass including the parent; registration/session suites report five/eight. No automated fixtures are written to Supabase.
 
 ## Environment Variables
 
@@ -200,7 +210,7 @@ Startup validates settings before constructing the database client. Missing/inva
 
 Helmet supplies security headers and hides Express's identifying header. HTTPS-only browser directives are enabled in production mode and disabled for local development; production hosting still must actually provide HTTPS.
 
-Set `CORS_ORIGINS=http://localhost:5173` locally when the future Vite frontend needs access. Origins must match exactly, with no path, credentials, wildcard or trailing slash; multiple origins are comma-separated. Keep your private `.env` local; auth setup requires two independent secrets. An explicit unapproved Origin receives JSON 403 before route processing. No-Origin clients such as PowerShell still work. CORS covers GET/POST and Content-Type/Authorization/X-CSRF-Token. Cookie credentials are enabled only on /api/auth paths for exact approved origins. Unsafe auth writes additionally require a trusted Origin/Referer and CSRF protection. CORS is not authentication or a replacement for CSRF protection.
+Set `CORS_ORIGINS=http://localhost:5173` locally when the future Vite frontend needs access. Origins must match exactly, with no path, credentials, wildcard or trailing slash; multiple origins are comma-separated. Keep your private `.env` local; auth setup requires two independent secrets. An explicit unapproved Origin receives JSON 403 before route processing. No-Origin root/goal clients such as PowerShell still work; goal operations require a Bearer token. CORS covers GET/POST and Content-Type/Authorization/X-CSRF-Token. Cookie credentials are enabled only on /api/auth paths for exact approved origins. Unsafe auth writes additionally require a trusted Origin/Referer and CSRF protection. CORS is not authentication or a replacement for CSRF protection.
 
 API paths share a limit of 100 requests per IP per 15 minutes, counting successes and failures. Exceeding it returns JSON 429 with Retry-After and standard rate-limit headers. Approved CORS preflights and the root app-information route do not consume that budget. The counter is in memory per server process, resets on restart, and is not distributed DDoS protection; shared-IP users also share a budget. Express retains trust-proxy=false so caller-supplied forwarding headers cannot choose their own rate-limit identity. Review the actual trusted proxy chain and shared counter requirements before production deployment.
 

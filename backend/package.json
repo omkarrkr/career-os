@@ -16,7 +16,8 @@
     "prisma:validate": "prisma validate --config prisma7.config.ts",
     "prisma:status": "prisma migrate status --config prisma7.config.ts",
     "prisma:validate:auth-proposal": "prisma validate --config prisma7.config.ts --schema prisma/proposals/auth/schema.prisma",
-    "test:migration:auth": "node --import tsx --test tests/auth-migration.test.mjs"
+    "test:migration:auth": "node --import tsx --test tests/auth-migration.test.mjs",
+    "test:integration:goals": "node --import ./tests/setup-env.mjs --import tsx --test tests/integration/goals.test.mjs"
   },
   "keywords": [],
   "author": "",

@@ -1,5 +1,12 @@
 import { z } from "zod";
 
+export const goalIdSchema = z.string().regex(/^[1-9]\d*$/).transform(Number)
+    .pipe(z.number().int().positive().max(2147483647));
+export const listGoalsSchema = z.object({
+    limit: z.string().regex(/^[1-9]\d*$/).transform(Number).pipe(z.number().int().max(50)).default(20),
+    afterId: goalIdSchema.optional(),
+});
+
 export const createGoalSchema = z.object({
     title: z.string({ error: "Title must be text" })
         .trim()

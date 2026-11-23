@@ -1,10 +1,10 @@
 # CareerOS API contracts
 
-Updated 24 November 2026. Development base URL: http://localhost:3000. Registration, login, session refresh/logout and protected real-user profile are implemented. Goal ownership enforcement is pending; do not expose this as a finished multi-user API.
+Updated 24 November 2026. Development base URL: http://localhost:3000. Registration, login, session refresh/logout and protected real-user profile are implemented. Goal creation/list/detail are ownership-scoped; legacy backfill and update/delete are pending; do not expose this as a finished multi-user API.
 
 ## POST /api/goals
 
-Send an application/json object:
+Requires Authorization: Bearer <accessToken>. The active session must be valid. The server sets userId from that session; a body-supplied userId is ignored. Send an application/json object:
 
 | Field | Contract |
 | --- | --- |
@@ -21,7 +21,7 @@ Example valid body:
 {"title":"Learn SQL","category":"Development","targetDate":"2026-12-15"}
 ```
 
-Success remains 201 with `{message: "Goal created successfully", data: <saved Goal>}`. Goal fields are described in PROJECT_AUDIT.md.
+Success remains 201 with `{message: "Goal created successfully", data: <saved Goal>}`. Goal fields include the server-assigned userId. Older NULL-owned goals are never claimed by signup or goal creation.
 
 Invalid goal data returns 400, for example:
 
@@ -35,6 +35,14 @@ Invalid goal data returns 400, for example:
 Errors identify fields without returning the submitted body. Malformed JSON and parser-rejected primitive bodies return 400 `{message: "Invalid JSON body"}`. Bodies exceeding Express JSON parser's default 100kb limit return 413 `{message: "Request body is too large"}`. JSON parser checks happen before controller validation. Unknown routes/methods return 404 `{message: "Route not found"}` without reflecting the URL or query string.
 
 Unexpected goal-service failures now propagate through Express 5's async error handling to the shared final middleware, returning 500 `{message: "Internal server error"}`. The log contains only a fixed error event, not raw exception data, request bodies or credentials. This replaces the old `Failed to create goal` response. Structured diagnostics/request IDs and broader startup logging remain future work.
+
+## GET /api/goals and GET /api/goals/:id
+
+Both require a valid Bearer access token and active session. Lists return 200 `{data:[Goal],nextCursor:number|null}` ordered by id ascending, scoped to the signed-in user. Optional limit is an integer string 1-50 (default 20); afterId is a positive PostgreSQL Int ID. Send the previous nextCursor as afterId for the next page. Invalid IDs/query values return 400 `Invalid goal ID` or `Invalid goal query`. Pagination retrieves at most 51 rows per request. Unknown query fields, including userId, cannot change the owner filter.
+
+Detail returns 200 `{data:Goal}` only when both id and userId match. A foreign-owned, NULL-owned legacy or nonexistent goal returns the identical 404 `{message:"Goal not found"}`. Missing/invalid/revoked authentication returns 401 before goal queries. Authenticated responses use no-store. Update/delete are not implemented; no claim-legacy endpoint exists.
+
+Migration 20261124120000_protect_goal_data_api enables Goal RLS without public policies, closing ordinary-role direct Supabase Data API access. It refuses unexpected existing policies. The owning backend role can still access rows and must enforce userId in every operation. Service-role/admin credentials remain privileged and must stay private. This changes security metadata only: existing goal fields and NULL ownership are preserved.
 
 ## Existing user and root routes
 
@@ -79,7 +87,7 @@ Serialize refreshes across the frontend, including tabs. Two requests with the s
 
 Production cookies are `__Host-careeros_refresh`, `__Host-careeros_binding`, and `__Host-careeros_csrf`: Secure, HttpOnly, SameSite=Lax, Path=/, without Domain. Development uses `careeros_` names without Secure for local HTTP. This expects same-site frontend/backend deployment; different-site hosting needs a cookie/CSRF review. CORS_ORIGINS must include even a same-origin UI's origin for unsafe auth requests. CLI auth writes require a configured Origin/Referer plus cookies and CSRF.
 
-Login allows 10 attempts/IP/15 minutes; /api/auth also has a 60-request/IP/15-minute budget, and the API-wide limit applies. Failed CSRF/validation attempts count. No schema change, real-account creation or legacy-goal claiming was needed. Password change, ownership enforcement, verification/recovery and session-history cleanup remain later work.
+Login allows 10 attempts/IP/15 minutes; /api/auth also has a 60-request/IP/15-minute budget, and the API-wide limit applies. Failed CSRF/validation attempts count. No schema change, real-account creation or legacy-goal claiming was needed. Password change, legacy ownership backfill, verification/recovery and session-history cleanup remain later work.
 
 ## Response convention
 
@@ -93,6 +101,6 @@ Keep current success contracts to avoid unnecessary rewrites. Errors return a sa
 
 Helmet headers precede routes and errors. In production, HSTS and CSP upgrade-insecure-requests are enabled; development/test avoid forcing local HTTPS. These headers do not install a TLS certificate or provide transport encryption themselves.
 
-Origins are exact HTTP(S) origins from CORS_ORIGINS, separated by commas. Absent/empty configuration permits no explicit Origin values. Unapproved origins (including `null`) receive 403 `{message: "Origin is not allowed"}` before persistence; responses do not echo the origin. No-Origin root/goal tools remain usable; cookie-auth writes require a trusted Origin/Referer as above. Allowed origins receive explicit Access-Control-Allow-Origin and Vary: Origin; error responses retain CORS permissions. Cookie credentials are enabled only on /api/auth paths. Approved OPTIONS preflights return 204; permitted methods are GET/POST and headers are Content-Type/Authorization/X-CSRF-Token, with a 600-second preflight cache duration. Update methods/session policy alongside future APIs.
+Origins are exact HTTP(S) origins from CORS_ORIGINS, separated by commas. Absent/empty configuration permits no explicit Origin values. Unapproved origins (including `null`) receive 403 `{message: "Origin is not allowed"}` before persistence; responses do not echo the origin. No-Origin root and Bearer-authenticated goal tools remain usable; cookie-auth writes require a trusted Origin/Referer as above. Allowed origins receive explicit Access-Control-Allow-Origin and Vary: Origin; error responses retain CORS permissions. Cookie credentials are enabled only on /api/auth paths. Approved OPTIONS preflights return 204; permitted methods are GET/POST and headers are Content-Type/Authorization/X-CSRF-Token, with a 600-second preflight cache duration. Update methods/session policy alongside future APIs.
 
 All /api paths share a fixed-window per-IP limit of 100 requests per 15 minutes; rejected validation and unknown API requests count too. Request 101 returns 429 `{message: "Too many requests; try again later"}`, with Retry-After, RateLimit and RateLimit-Policy headers exposed to approved browser origins. Preflights handled by CORS and GET / bypass this limit. Non-API paths also lie outside this API limiter. Memory counters are process-local and reset on restart. Proxy trust is intentionally false; deployment behind a reverse proxy requires a reviewed exact trust policy to avoid grouping all users under the proxy's IP or trusting forged addresses. The dedicated login/auth limits described above also apply.

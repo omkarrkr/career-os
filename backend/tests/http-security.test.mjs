@@ -108,14 +108,14 @@ test("empty origin configuration rejects explicit origins but permits no-Origin 
     }, { CORS_ORIGINS: "" });
 });
 
-test("validation errors retain CORS permissions and security headers", async () => {
+test("authentication errors retain CORS permissions and security headers", async () => {
     await withServer(async (base) => {
         const response = await fetch(base + "/api/goals", {
             method: "POST",
             headers: { Origin: allowedOrigin, "content-type": "application/json" },
             body: "{}",
         });
-        assert.equal(response.status, 400);
+        assert.equal(response.status, 401);
         assert.equal(response.headers.get("access-control-allow-origin"), allowedOrigin);
         assert.equal(response.headers.get("x-content-type-options"), "nosniff");
     });

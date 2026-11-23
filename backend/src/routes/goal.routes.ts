@@ -1,8 +1,13 @@
 import { Router } from "express";
-import { createGoalController } from "../controllers/goal.controller.js";
+import { createGoalController, listGoalsController, getGoalController } from "../controllers/goal.controller.js";
+import { authentication } from "../middleware/authentication.middleware.js";
+import type { readEnvironment } from "../config/env.js";
 
-const router = Router();
-
-router.post("/", createGoalController);
-
-export default router;
+export const createGoalRouter = (settings: ReturnType<typeof readEnvironment>) => {
+    const router = Router();
+    router.use(authentication(settings));
+    router.post("/", createGoalController);
+    router.get("/", listGoalsController);
+    router.get("/:id", getGoalController);
+    return router;
+};
