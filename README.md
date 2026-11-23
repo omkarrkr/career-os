@@ -16,7 +16,7 @@ CareerOS is a full-stack AI platform that helps engineering students with:
 
 The backend foundation is verified as of 22 November 2026: type checking, compilation, database connectivity, migration status and compiled startup pass. The frontend (React + TypeScript + Tailwind CSS) is **not yet built** — this repo currently contains only the Node.js/Express backend. Goal creation now validates input and has automated API tests. User endpoints are placeholders, and goal creation is not authenticated; this is not a production-ready multi-user API.
 
-The first release connects a target role, skill/project evidence, explained gaps, goals, a roadmap and a reviewed AI weekly plan. The features above describe the longer-term vision. See [the active milestones](docs/ROADMAP.md), [architecture](docs/ARCHITECTURE.md), [historical audit](docs/PROJECT_AUDIT.md) and [learning notes](docs/MILESTONE_NOTES.md).
+The first release connects a target role, skill/project evidence, explained gaps, goals, a roadmap and a reviewed AI weekly plan. The features above describe the longer-term vision. See [the active milestones](docs/ROADMAP.md), [architecture](docs/ARCHITECTURE.md) and [historical audit](docs/PROJECT_AUDIT.md).
 
 ## Tech Stack
 
@@ -150,7 +150,7 @@ If the database check fails, preserve `.env` and collect only sanitized error de
 
 ### Tests
 
-From `backend`, run `npm.cmd test`. The Node test runner uses tsx to import TypeScript. Tests use temporary local servers, dummy database settings and in-memory database stand-ins; no Supabase connection or records are used. Coverage includes API validation/errors/non-disclosure and startup settings, occupied ports, request draining, cleanup failures/timeouts, repeated shutdown events and entry-point failure safety. Signal wiring tests emit Node events internally; they do not claim to test real OS signal delivery. See [API contracts](docs/API.md) and [learning notes](docs/MILESTONE_NOTES.md). These are not live-database integration tests.
+From `backend`, run `npm.cmd test`. The Node test runner uses tsx to import TypeScript. Tests use temporary local servers, dummy database settings and in-memory database stand-ins; no Supabase connection or records are used. Coverage includes API validation/errors/non-disclosure and startup settings, occupied ports, request draining, cleanup failures/timeouts, repeated shutdown events and entry-point failure safety. Signal wiring tests emit Node events internally; they do not claim to test real OS signal delivery. See [API contracts](docs/API.md). These are not live-database integration tests.
 
 ### M2 migration proposal (not deployed)
 

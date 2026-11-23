@@ -28,3 +28,11 @@ backend/.agents/
 backend/.claude/
 backend/.windsurf/
 backend/skills-lock.json
+
+# Personal study notes and working context: local only
+/docs/MILESTONE_NOTES.md
+/docs/MASTER_CONTEXT.md
+/docs/private/
+
+# Private local database backups and recovery artifacts
+/.local/
