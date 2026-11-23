@@ -1,4 +1,4 @@
-import type { Express } from "express";
+import type { Express, Request } from "express";
 import cors from "cors";
 import helmet from "helmet";
 import { rateLimit } from "express-rate-limit";
@@ -27,14 +27,14 @@ export const configureHttpSecurity = (app: Express, settings: SecuritySettings) 
         next();
     });
 
-    app.use(cors({
+    app.use(cors<Request>((req, callback) => callback(null, {
         origin: settings.CORS_ORIGINS,
         methods: ["GET", "POST"],
-        allowedHeaders: ["Content-Type", "Authorization"],
+        allowedHeaders: ["Content-Type", "Authorization", "X-CSRF-Token"],
         exposedHeaders: ["RateLimit", "RateLimit-Policy", "Retry-After"],
-        credentials: false,
+        credentials: req.path === "/api/auth" || req.path.startsWith("/api/auth/"),
         maxAge: 600,
-    }));
+    })));
 
     // Keep Express's default trust-proxy=false until deployment topology is known.
     app.use("/api", rateLimit({
@@ -52,5 +52,15 @@ export const configureHttpSecurity = (app: Express, settings: SecuritySettings) 
         legacyHeaders: false,
         skip: (req) => req.method !== "POST",
         message: { message: "Too many registration attempts; try again later" },
+    }));
+
+    app.use("/api/auth", rateLimit({
+        windowMs: 15 * 60 * 1000, limit: 60, standardHeaders: "draft-8", legacyHeaders: false,
+        message: { message: "Too many authentication requests; try again later" },
+    }));
+    app.use("/api/auth/login", rateLimit({
+        windowMs: 15 * 60 * 1000, limit: 10, standardHeaders: "draft-8", legacyHeaders: false,
+        skip: (req) => req.method !== "POST",
+        message: { message: "Too many login attempts; try again later" },
     }));
 };

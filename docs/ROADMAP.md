@@ -90,8 +90,8 @@ Acceptance: malformed requests return safe actionable errors; valid goal behavio
 - [x] Draft/review additive schema/SQL outside active migration path; validate with Prisma and embedded PostgreSQL preservation/constraint/rollback tests.
 - [x] Verify scoped application backup/restore, native PostgreSQL staging, permissions/freshness/drift; promote/apply the additive migration and verify preservation. Initial migration remains unchanged.
 - [x] Implement validated registration, bcrypt hashing, safe public fields, unique-email race handling and signup throttling.
-- [ ] Implement login and verify credentials without exposing account/password details.
-- [ ] Implement JWT/session expiry, refresh rotation/revocation where appropriate, logout and protected routes.
+- [x] Implement login and verify credentials without exposing account/password details.
+- [x] Implement JWT/session expiry, refresh rotation/revocation, logout and protected profile. Goal ownership remains below.
 - [ ] Add ownership enforcement, account/profile APIs and password change.
 - [ ] Test duplicate registration, invalid credentials, expired tokens and cross-user access.
 
@@ -102,6 +102,8 @@ M2 proposal checkpoint (23 November): `backend/prisma/proposals/auth` contains c
 M2 database rollout (23 November): migration `20261123140042_add_auth_sessions_and_goal_owner` applied via Prisma after scoped backup/restore proof, exact-SQL native PostgreSQL rehearsal and live permission/freshness/drift checks. Adds empty User/AuthSession/RefreshToken tables, nullable Goal.userId and indexes/FKs; RLS denies ordinary-role access to credential/session rows. Existing Goal values, unassigned ownership and initial history were preserved; checksum/status/drift verification passes. Regenerated client, build/typecheck, 62 reported tests and compiled live read-only smoke/graceful shutdown pass. Authentication endpoints/backfill remain pending. Recovery artifacts and personal notes stay ignored/local; no credentials, real goal contents or backups are committed.
 
 M2 registration (verified 24 November): name/email/password validation, lowercased email identity, byte-bounded password policy, async bcrypt cost 12, public-field-only responses and 10-attempt/IP/15-minute signup throttling implemented. PostgreSQL uniqueness resolves races; the actual Prisma adapter constraint metadata was verified through isolated integration tests, then handled without exposing raw details. Typecheck/build and 72 default tests plus five isolated PostgreSQL integration tests pass. Tests create fictional local accounts only; no Supabase records/schema were changed and no legacy goal was claimed. Login/session/CSRF/ownership remain pending. Comprehensive compromised-password screening, verification/recovery and production abuse controls remain public-launch work.
+
+M2 login/session step (24 November): credential login, 15-minute access JWTs capped by seven-day absolute sessions, hashed rotating HttpOnly refresh cookies, committed replay/concurrent-use revocation, session-bound CSRF, protected real-user profile and dedicated auth/login limits implemented. Typecheck/build, 79 default tests and eight isolated native PostgreSQL session tests pass; the five registration integration tests also pass. No Supabase writes, schema change or legacy ownership assignment. Goal authorization, actual owner identity/backfill, password change and cross-user resource tests remain required before M2 is complete.
 
 Acceptance: two users cannot access each other's resources; existing data is preserved with explicit legitimate ownership decisions.
 

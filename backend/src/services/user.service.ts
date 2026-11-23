@@ -31,10 +31,6 @@ export const createUser = async ({ name, email, password }: RegisterUserInput) =
     }
 };
 
-export const getUserProfile = () => {
-    return {
-        id: 1,
-        name: "Demo User",
-        role: "Student"
-    };
-};
+export const getUserProfile = (id: number) => prisma.user.findUnique({
+    where: { id }, select: { id: true, name: true, email: true, createdAt: true },
+});

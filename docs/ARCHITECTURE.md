@@ -21,12 +21,12 @@ After startup, SIGINT/SIGTERM handlers request shutdown once. HTTP stops accepti
 
 - Routes select handlers by HTTP method and URL.
 - Controllers select request fields and form HTTP responses.
-- Services contain application operations. Currently only the goal service persists anything.
+- Services contain application operations. Goal, user and auth services persist through Prisma.
 - `config/prisma.ts` exports one Prisma client with `PrismaPg` and `DATABASE_URL`.
 - `schema.prisma` describes Goal, User, AuthSession and RefreshToken. SQL migrations describe database changes over time.
 - The generated Prisma client supplies database types and query methods; it is ignored and must be generated locally.
 
-The goal path is `POST /api/goals -> createGoalController -> Zod schema validation -> createGoal -> prisma.goal.create -> PostgreSQL`. Invalid input stops at the controller with a 400. The schema trims required strings and selects only supported fields. A JSON 404 handler follows routes; final error middleware follows that. Async failures reach the shared handler through Express 5, returning a generic 500 and fixed safe log event. Profile remains static. Registration follows schema validation -> user service -> asynchronous bcrypt hash -> Prisma create with public-field selection; the controller serializes public fields again. A deliberate ApiError maps the known email uniqueness violation to 409 without exposing adapter diagnostics. No frontend or AI layer exists.
+The goal path is `POST /api/goals -> createGoalController -> Zod schema validation -> createGoal -> prisma.goal.create -> PostgreSQL`. Invalid input stops at the controller with a 400. The schema trims required strings and selects only supported fields. A JSON 404 handler follows routes; final error middleware follows that. Async failures reach the shared handler through Express 5, returning a generic 500 and fixed safe log event. Profile requires authentication and selects the signed-in user’s public fields. Registration follows schema validation -> user service -> asynchronous bcrypt hash -> Prisma create with public-field selection; the controller serializes public fields again. A deliberate ApiError maps the known email uniqueness violation to 409 without exposing adapter diagnostics. No frontend or AI layer exists.
 
 ## Configuration and boundaries
 
@@ -36,7 +36,7 @@ Prisma CLI uses `prisma7.config.ts`; package scripts select this filename explic
 
 ## Planned architecture
 
-M2 database foundations are active as of 23 November 2026. Migration `20261123140042_add_auth_sessions_and_goal_owner` was restore-rehearsed on native PostgreSQL 17 and applied through Prisma after freshness/permission/drift checks. User -> AuthSession -> RefreshToken tables and nullable indexed Goal.userId now exist; the runtime client was regenerated and read-only smoke checked. Credential/session tables have RLS enabled without public policies, preventing ordinary non-owner API roles from accessing rows despite possible default grants; the owning backend database role can manage them. Row ownership checks in backend services remain necessary because the owner bypasses RLS. No accounts/sessions were created and no goals were reassigned. The historical proposal is no longer a deployment source. Auth endpoints/session logic and verified legacy ownership backfill remain pending. Goal Data API/RLS access must be reviewed alongside the protected multi-user rollout, not assumed safe merely because the new credential tables are guarded.
+M2 database foundations are active as of 23 November 2026. Migration `20261123140042_add_auth_sessions_and_goal_owner` was restore-rehearsed on native PostgreSQL 17 and applied through Prisma after freshness/permission/drift checks. User -> AuthSession -> RefreshToken tables and nullable indexed Goal.userId now exist; the runtime client was regenerated and read-only smoke checked. Credential/session tables have RLS enabled without public policies, preventing ordinary non-owner API roles from accessing rows despite possible default grants; the owning backend database role can manage them. Row ownership checks in backend services remain necessary because the owner bypasses RLS. No accounts/sessions were created and no goals were reassigned. The historical proposal is no longer a deployment source. Auth endpoints/session logic are implemented; verified legacy ownership backfill remains pending. Goal Data API/RLS access must be reviewed alongside the protected multi-user rollout, not assumed safe merely because the new credential tables are guarded.
 
 Keep the existing Node, Express 5, PostgreSQL/Supabase and Prisma 7 stack. Use incremental layers:
 
@@ -50,15 +50,28 @@ React/TypeScript/Vite UI
                                -> private document storage (when required)
 ```
 
-Zod validates goal/signup inputs and bcrypt hashes registration passwords at cost 12. A separate signup limiter precedes parsing/hashing. JWT/session flow and the frontend remain planned; registration creates no session. Existing Goal ownership remains nullable until verified account linkage/backfill. Never assign old records to the first signup. Unit/API tests replace persistence; the separately gated local PostgreSQL integration test verifies actual Prisma writes and duplicate races without touching Supabase.
+Zod validates goal/signup inputs and bcrypt hashes registration passwords at cost 12. A separate signup limiter precedes parsing/hashing. JWT/session flow is implemented; the frontend remains planned. Registration creates no session. Existing Goal ownership remains nullable until verified account linkage/backfill. Never assign old records to the first signup. Unit/API tests replace persistence; the separately gated local PostgreSQL integration test verifies actual Prisma writes and duplicate races without touching Supabase.
 
 Add relational models only as their feature is implemented. User/Profile anchor skills, projects, goals and later roadmaps/applications. Multi-record writes should use transactions. Index ownership and proven query patterns; paginate lists. Document cascade/delete behavior before migrations.
 
 ## Security and AI design constraints
 
-Hash passwords, return explicit public user fields, protect routes, and scope each resource lookup/mutation to its owner. Decide refresh-token storage, rotation, expiry, logout and CSRF strategy before implementing account sessions. Log sanitized operational context instead of raw bodies/secrets.
+Hash passwords, return explicit public user fields, protect routes, and scope each resource lookup/mutation to its owner. Session routes use jose-signed access JWTs, hashed opaque refresh tokens, transactional rotation/replay revocation, HttpOnly cookies and csrf-csrf session-bound double-submit protection. Every protected request also checks the active database session. Log sanitized operational context instead of raw bodies/secrets.
 
 Keep AI provider calls behind a service interface with prompt templates, validated structured outputs, timeouts, controlled retries, per-user limits and cost awareness. Retrieve only the authenticated user's relevant data. Model output must never directly execute database commands. Use deterministic, documented calculations for scores; distinguish suggested resources from verified resources. Uploaded resumes require private ownership-scoped storage, upload constraints and safe extraction.
+
+## Implemented session request flow
+
+```text
+GET /api/auth/csrf -> anonymous binding + signed CSRF cookies + CSRF response token
+POST /api/auth/login + CSRF -> bcrypt comparison -> session + hashed refresh record
+                           -> access JWT JSON + HttpOnly refresh cookie + new bound CSRF
+GET /api/users/profile + Bearer JWT -> signature/claims -> active session -> public user
+POST /api/auth/refresh + cookies/CSRF -> row-locked rotation -> replacement cookie/JWT
+POST /api/auth/logout + cookies/CSRF -> revoke session -> clear cookies
+```
+
+`routes/auth.routes.ts` owns cookies/CSRF and HTTP contracts. `services/auth.service.ts` owns credential checks and database session operations. `utils/auth-tokens.ts` owns strict jose JWT signing/verification and refresh generation/hashing. `middleware/authentication.middleware.ts` verifies bearer authentication before protected controllers. Refresh replay returns a failure after committing revocation; throwing inside that transaction would roll revocation back. Concurrent refreshes are intentionally treated as reuse, so the frontend must coordinate a single refresh at a time across tabs. Session expiry is absolute and every protected request checks revocation in PostgreSQL. Login/session verification uses fictional local databases, never Supabase user records.
 
 ## Engineering tradeoffs
 

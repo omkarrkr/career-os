@@ -1,10 +1,14 @@
 import type { Request, Response } from "express";
 import { createUser, getUserProfile } from "../services/user.service.js";
 import { registerUserSchema } from "../schemas/user.schema.js";
+import { invalidSession } from "../utils/auth-tokens.js";
 
-export const getProfile = (req: Request, res: Response) => {
+export const getProfile = async (_req: Request, res: Response) => {
 
-    const user = getUserProfile();
+    const userId: unknown = res.locals.auth?.userId;
+    if (typeof userId !== "number") throw invalidSession();
+    const user = await getUserProfile(userId);
+    if (!user) throw invalidSession();
 
     res.json({
         success: true,

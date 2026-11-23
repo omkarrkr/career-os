@@ -1,5 +1,6 @@
 import express from "express";
-import userRoutes from "./routes/user.routes.js";
+import { createUserRouter } from "./routes/user.routes.js";
+import { createAuthRouter } from "./routes/auth.routes.js";
 import goalRoutes from "./routes/goal.routes.js";
 import { errorHandler, notFoundHandler } from "./middleware/error.middleware.js";
 import { readEnvironment } from "./config/env.js";
@@ -20,7 +21,8 @@ export const createApp = (settings = readEnvironment()) => {
         });
     });
 
-    app.use("/api/users", userRoutes);
+    app.use("/api/users", createUserRouter(settings));
+    app.use("/api/auth", createAuthRouter(settings));
     app.use("/api/goals", goalRoutes);
     app.use(notFoundHandler);
     app.use(errorHandler);

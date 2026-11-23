@@ -3,7 +3,9 @@ import { spawnSync } from "node:child_process";
 import { createServer } from "node:http";
 import { once } from "node:events";
 import test from "node:test";
-import { readEnvironment } from "../src/config/env.ts";
+import { readEnvironment as parseEnvironment } from "../src/config/env.ts";
+const authKeys = { AUTH_JWT_SECRET: "a".repeat(64), AUTH_CSRF_SECRET: "b".repeat(64) };
+const readEnvironment = (source) => parseEnvironment({ ...authKeys, ...source });
 
 const databaseUrl = "postgresql://test:test@127.0.0.1:1/careeros_test";
 
@@ -13,6 +15,7 @@ test("startup settings accept a PostgreSQL URL and default the HTTP port", () =>
         PORT: 3000,
         NODE_ENV: "development",
         CORS_ORIGINS: [],
+        ...authKeys,
     });
     assert.equal(readEnvironment({ DATABASE_URL: databaseUrl, PORT: "8080" }).PORT, 8080);
     assert.equal(readEnvironment({ DATABASE_URL: databaseUrl, PORT: "65535" }).PORT, 65535);

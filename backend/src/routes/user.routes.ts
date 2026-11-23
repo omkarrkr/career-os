@@ -1,9 +1,13 @@
 import { Router } from "express";
 import { getProfile, registerUser } from "../controllers/user.controller.js";
+import type { readEnvironment } from "../config/env.js";
+import { authentication } from "../middleware/authentication.middleware.js";
 
-const router = Router();
+export const createUserRouter = (settings: ReturnType<typeof readEnvironment>) => {
+    const router = Router();
 
-router.get("/profile", getProfile);
-router.post("/register",registerUser);
+    router.get("/profile", authentication(settings), getProfile);
+    router.post("/register", registerUser);
 
-export default router;
+    return router;
+};

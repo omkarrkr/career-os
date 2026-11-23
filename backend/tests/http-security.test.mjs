@@ -11,6 +11,8 @@ const allowedOrigin = "http://localhost:5173";
 
 const withServer = async (run, environment = {}) => {
     const app = createApp(readEnvironment({
+        AUTH_JWT_SECRET: process.env.AUTH_JWT_SECRET,
+        AUTH_CSRF_SECRET: process.env.AUTH_CSRF_SECRET,
         DATABASE_URL: databaseUrl,
         CORS_ORIGINS: allowedOrigin,
         ...environment,
@@ -48,7 +50,7 @@ test("production responses include HTTPS browser safeguards", async () => {
 test("allowed origin gets explicit CORS permission without cookie credentials", async () => {
     await withServer(async (base) => {
         const response = await fetch(base + "/api/users/profile", { headers: { Origin: allowedOrigin } });
-        assert.equal(response.status, 200);
+        assert.equal(response.status, 401);
         assert.equal(response.headers.get("access-control-allow-origin"), allowedOrigin);
         assert.equal(response.headers.get("access-control-allow-credentials"), null);
         assert.match(response.headers.get("vary"), /Origin/);
@@ -130,7 +132,7 @@ test("API limit returns safe 429, excludes preflight/root and resists spoofed fo
         }
         for (let index = 0; index < 100; index++) {
             const response = await fetch(base + "/api/users/profile");
-            assert.equal(response.status, 200, `request ${index + 1}`);
+            assert.equal(response.status, 401, `request ${index + 1}`);
             await response.arrayBuffer();
         }
         const limited = await fetch(base + "/api/users/profile", {
@@ -160,6 +162,53 @@ test("registration has its own 10-attempt budget before validation and hashing",
         });
         assert.equal(response.status, 429);
         assert.deepEqual(await response.json(), { message: "Too many registration attempts; try again later" });
-        assert.equal((await fetch(base + "/api/users/profile")).status, 200);
+        assert.equal((await fetch(base + "/api/users/profile")).status, 401);
+    });
+});
+
+test("auth bootstrap uses credentialed exact-origin CORS and host-only production cookies", async () => {
+    await withServer(async (base) => {
+        const response = await fetch(base + "/api/auth/csrf", { headers: { Origin: allowedOrigin } });
+        assert.equal(response.status, 200);
+        assert.equal(response.headers.get("access-control-allow-origin"), allowedOrigin);
+        assert.equal(response.headers.get("access-control-allow-credentials"), "true");
+        assert.equal(response.headers.get("cache-control"), "no-store");
+        assert.equal(typeof (await response.json()).csrfToken, "string");
+        const cookies = response.headers.getSetCookie();
+        assert.equal(cookies.length, 2);
+        for (const cookie of cookies) {
+            assert.match(cookie, /^__Host-careeros_(binding|csrf)=/);
+            for (const flag of [/; HttpOnly/, /; Secure/, /; SameSite=Lax/, /; Path=\/(;|$)/]) assert.match(cookie, flag);
+            assert.doesNotMatch(cookie, /; Domain=/i);
+        }
+    }, { NODE_ENV: "production" });
+});
+
+test("login has a separate 10-attempt budget even for requests rejected by CSRF", async () => {
+    await withServer(async (base) => {
+        for (let index = 0; index < 11; index++) {
+            const response = await fetch(base + "/api/auth/login", { method: "POST",
+                headers: { Origin: allowedOrigin, "Content-Type": "application/json" }, body: "{}" });
+            assert.equal(response.status, index < 10 ? 403 : 429);
+            if (index === 10) assert.deepEqual(await response.json(), { message: "Too many login attempts; try again later" });
+            else await response.arrayBuffer();
+        }
+    });
+});
+
+test("auth endpoints reject unsupported content and missing or forged CSRF before database access", async () => {
+    await withServer(async (base) => {
+        const bootstrap = await fetch(base + "/api/auth/csrf", { headers: { Origin: allowedOrigin } });
+        const cookie = bootstrap.headers.getSetCookie().map((line) => line.split(";")[0]).join("; ");
+        const token = (await bootstrap.json()).csrfToken;
+        for (const headers of [
+            { "Content-Type": "text/plain", "X-CSRF-Token": token },
+            { "Content-Type": "application/json" },
+            { "Content-Type": "application/json", "X-CSRF-Token": "forged" },
+        ]) {
+            const response = await fetch(base + "/api/auth/refresh", { method: "POST", headers: { Origin: allowedOrigin, Cookie: cookie, ...headers }, body: "{}" });
+            assert.equal(response.status, headers["Content-Type"] === "text/plain" ? 415 : 403);
+            await response.arrayBuffer();
+        }
     });
 });

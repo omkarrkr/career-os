@@ -21,6 +21,11 @@ export const errorHandler = (
         return;
     }
 
+    if (typeof error === "object" && error !== null && "code" in error && error.code === "EBADCSRFTOKEN") {
+        res.status(403).json({ message: "CSRF validation failed" });
+        return;
+    }
+
     const type = typeof error === "object" && error !== null && "type" in error
         ? error.type
         : undefined;

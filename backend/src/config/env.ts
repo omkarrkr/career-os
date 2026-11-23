@@ -15,6 +15,8 @@ const environmentSchema = z.object({
         .transform(Number)
         .pipe(z.number().int().min(1).max(65535)),
     NODE_ENV: z.enum(["development", "test", "production"]),
+    AUTH_JWT_SECRET: z.string().regex(/^[a-f0-9]{64}$/i),
+    AUTH_CSRF_SECRET: z.string().regex(/^[a-f0-9]{64}$/i),
     CORS_ORIGINS: z.string()
         .transform((value) => value.trim() === "" ? [] : value.split(",").map((origin) => origin.trim()))
         .pipe(z.array(z.string().refine((value) => {
@@ -25,6 +27,8 @@ const environmentSchema = z.object({
                 return false;
             }
         }))),
+}).refine((value) => value.AUTH_JWT_SECRET !== value.AUTH_CSRF_SECRET, {
+    path: ["AUTH_CSRF_SECRET"], message: "Use independent secrets",
 });
 
 export const readEnvironment = (source: NodeJS.ProcessEnv = process.env) => {
@@ -32,6 +36,8 @@ export const readEnvironment = (source: NodeJS.ProcessEnv = process.env) => {
         DATABASE_URL: source.DATABASE_URL,
         PORT: source.PORT ?? "3000",
         NODE_ENV: source.NODE_ENV ?? "development",
+        AUTH_JWT_SECRET: source.AUTH_JWT_SECRET,
+        AUTH_CSRF_SECRET: source.AUTH_CSRF_SECRET,
         CORS_ORIGINS: source.CORS_ORIGINS ?? "",
     });
 

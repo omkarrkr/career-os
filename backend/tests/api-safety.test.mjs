@@ -46,16 +46,13 @@ test("invalid registration and unknown routes return safe JSON", async (t) => {
             assert.deepEqual(await response.json(), { message: "Route not found" });
         });
 
-        await t.test("root and demo profile contracts remain available", async () => {
+        await t.test("root stays available and profile now requires authentication", async () => {
             const root = await fetch(`${base}/`);
             assert.equal(root.status, 200);
             assert.equal((await root.json()).project, "CareerOS");
             const profile = await fetch(`${base}/api/users/profile`);
-            assert.equal(profile.status, 200);
-            assert.deepEqual(await profile.json(), {
-                success: true,
-                data: { id: 1, name: "Demo User", role: "Student" },
-            });
+            assert.equal(profile.status, 401);
+            assert.deepEqual(await profile.json(), { message: "Invalid or expired session" });
         });
     } finally {
         await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
