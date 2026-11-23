@@ -1,5 +1,7 @@
 -- DRAFT ONLY: outside active migrations. Do not apply to Supabase yet.
 BEGIN;
+SET LOCAL lock_timeout = '5s';
+SET LOCAL statement_timeout = '30s';
 
 -- AlterTable
 ALTER TABLE "Goal" ADD COLUMN     "userId" INTEGER;
@@ -62,5 +64,11 @@ ALTER TABLE "AuthSession" ADD CONSTRAINT "AuthSession_userId_fkey" FOREIGN KEY (
 
 -- AddForeignKey
 ALTER TABLE "RefreshToken" ADD CONSTRAINT "RefreshToken_sessionId_fkey" FOREIGN KEY ("sessionId") REFERENCES "AuthSession"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- Credential/session tables are backend-only. With no policies, ordinary
+-- non-owner roles cannot read/write rows even if default grants exist.
+ALTER TABLE "User" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "AuthSession" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "RefreshToken" ENABLE ROW LEVEL SECURITY;
 
 COMMIT;

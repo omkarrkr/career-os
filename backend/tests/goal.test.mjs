@@ -116,11 +116,12 @@ test("goal creation validates requests before database access", async (t) => {
         }
 
         await t.test("ignores extra fields instead of allowing caller-controlled database fields", async () => {
-            const response = await post({ title: "Learn SQL", category: "Development", id: 999, status: "COMPLETED" });
+            const response = await post({ title: "Learn SQL", category: "Development", id: 999, status: "COMPLETED", userId: 999 });
             assert.equal(response.status, 201);
             assert.equal((await response.json()).data.status, "ACTIVE");
             assert.equal(Object.hasOwn(writes.at(-1), "id"), false);
             assert.equal(Object.hasOwn(writes.at(-1), "status"), false);
+            assert.equal(Object.hasOwn(writes.at(-1), "userId"), false);
         });
 
         await t.test("async persistence failure reaches shared handler without exposing raw details", async (t) => {

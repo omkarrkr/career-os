@@ -60,7 +60,7 @@ backend/
 │   │   └── user.routes.ts       # GET /api/users/profile, POST /api/users/register
 │   └── generated/prisma/   # Auto-generated Prisma Client
 ├── prisma/
-│   ├── schema.prisma       # Database schema (Goal model)
+│   ├── schema.prisma       # Goal, User, AuthSession and RefreshToken models
 │   └── migrations/         # SQL migrations
 ├── .env                    # Environment variables (DATABASE_URL)
 ├── package.json
@@ -78,8 +78,11 @@ model Goal {
   status      String   @default("ACTIVE")
   targetDate  DateTime?
   createdAt   DateTime @default(now())
+  userId      Int?
 }
 ```
+
+This Goal field excerpt omits relation/index declarations; see the active Prisma schema for the full definition. User, AuthSession and RefreshToken now provide the database foundation for authentication. Goal ownership remains optional during transition; registration/login and ownership enforcement are not implemented yet.
 
 ## API Endpoints
 
@@ -152,9 +155,11 @@ If the database check fails, preserve `.env` and collect only sanitized error de
 
 From `backend`, run `npm.cmd test`. The Node test runner uses tsx to import TypeScript. Tests use temporary local servers, dummy database settings and in-memory database stand-ins; no Supabase connection or records are used. Coverage includes API validation/errors/non-disclosure and startup settings, occupied ports, request draining, cleanup failures/timeouts, repeated shutdown events and entry-point failure safety. Signal wiring tests emit Node events internally; they do not claim to test real OS signal delivery. See [API contracts](docs/API.md). These are not live-database integration tests.
 
-### M2 migration proposal (not deployed)
+### M2 authentication database foundation
 
-The account/session schema and additive SQL draft are under [prisma/proposals/auth](backend/prisma/proposals/auth/README.md), outside the active schema/migration path. `npm.cmd run prisma:validate:auth-proposal` validates that draft; `npm.cmd run test:migration:auth` checks it against fictional legacy goals in an in-memory PGlite PostgreSQL engine. Those database-engine tests also run in the full test suite and check preservation, constraints and transactional rollback. They do not connect to Supabase or replace target-server staging/backup verification. No new auth tables or owner column are deployed, and registration remains a placeholder. Do not run the proposal SQL against the existing database yet.
+Migration `20261123140042_add_auth_sessions_and_goal_owner` adds account/session tables and nullable Goal.userId, with indexes, restrictive foreign keys and RLS on the three credential/session tables. It was rehearsed on an isolated native PostgreSQL 17 restore, then applied on 23 November 2026. Existing goal values and original migration history were preserved; no ownership backfill or account creation occurred. Registration remains a placeholder.
+
+The active schema/migrations are authoritative; [the proposal folder](backend/prisma/proposals/auth/README.md) is now historical reference. `npm.cmd run test:migration:auth` tests the committed migration against fictional old goals in PGlite, including preservation, uniqueness, references, transaction rollback and ordinary-role RLS denial. The full suite currently reports 62 passing tests. Keep backup/recovery artifacts local and ignored. For another environment, review pending SQL and deployment readiness before applying committed migrations with `prisma migrate deploy --config prisma7.config.ts`; regenerate the runtime client after its target schema is compatible. Do not replay the archived proposal SQL or edit applied migration history.
 
 ## Environment Variables
 

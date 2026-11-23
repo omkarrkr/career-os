@@ -23,7 +23,7 @@ After startup, SIGINT/SIGTERM handlers request shutdown once. HTTP stops accepti
 - Controllers select request fields and form HTTP responses.
 - Services contain application operations. Currently only the goal service persists anything.
 - `config/prisma.ts` exports one Prisma client with `PrismaPg` and `DATABASE_URL`.
-- `schema.prisma` describes the Goal record. SQL migrations describe changes to the database over time.
+- `schema.prisma` describes Goal, User, AuthSession and RefreshToken. SQL migrations describe database changes over time.
 - The generated Prisma client supplies database types and query methods; it is ignored and must be generated locally.
 
 The goal path is `POST /api/goals -> createGoalController -> Zod schema validation -> createGoal -> prisma.goal.create -> PostgreSQL`. Invalid input stops at the controller with a 400. The schema trims required strings and selects only supported fields. A JSON 404 handler follows routes; final error middleware follows that. Async goal-service rejections reach the shared handler through Express 5, returning a generic 500 and logging a fixed event without raw exception data. Profile returns static data; registration returns 501 without logging or echoing its body. Root information is returned directly from `app.ts`. There is no frontend or AI layer.
@@ -36,7 +36,7 @@ Prisma CLI uses `prisma7.config.ts`; package scripts select this filename explic
 
 ## Planned architecture
 
-M2 account/session design is recorded in AUTH_DESIGN.md (23 November 2026), not implemented at runtime. Candidate schema/transactional SQL lives under `backend/prisma/proposals/auth`, deliberately outside the active schema/migration path. PGlite tests use an embedded PostgreSQL engine with fictional records to verify preservation and database constraints; full target-server staging and Prisma-client integration remain separate. Active schema/client, migration history and Supabase are unchanged. Proposed User -> AuthSession -> RefreshToken records support signed access, rotation and revocation. Nullable Goal.userId supports staged ownership; reviewed backfill and a later required-owner constraint follow verified identity/data checks. Backup readiness, exact legacy snapshot and destination account remain pending. Never generate the active runtime client from the undeployed proposal.
+M2 database foundations are active as of 23 November 2026. Migration `20261123140042_add_auth_sessions_and_goal_owner` was restore-rehearsed on native PostgreSQL 17 and applied through Prisma after freshness/permission/drift checks. User -> AuthSession -> RefreshToken tables and nullable indexed Goal.userId now exist; the runtime client was regenerated and read-only smoke checked. Credential/session tables have RLS enabled without public policies, preventing ordinary non-owner API roles from accessing rows despite possible default grants; the owning backend database role can manage them. Row ownership checks in backend services remain necessary because the owner bypasses RLS. No accounts/sessions were created and no goals were reassigned. The historical proposal is no longer a deployment source. Auth endpoints/session logic and verified legacy ownership backfill remain pending. Goal Data API/RLS access must be reviewed alongside the protected multi-user rollout, not assumed safe merely because the new credential tables are guarded.
 
 Keep the existing Node, Express 5, PostgreSQL/Supabase and Prisma 7 stack. Use incremental layers:
 

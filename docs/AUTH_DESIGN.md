@@ -1,6 +1,6 @@
 # M2: accounts, sessions and safe goal ownership
 
-Design date: 23 November 2026. Account/session functionality is not implemented. The initial design checkpoint changed documentation only. A subsequent local-only proposal now exists under `backend/prisma/proposals/auth/` and has isolated engine tests; the active schema, active migrations, runtime client and remote database remain unchanged.
+Design date: 23 November 2026. Database foundation migration `20261123140042_add_auth_sessions_and_goal_owner` is applied and the client regenerated. Account/session API functionality is not implemented. The proposal folder is historical reference; the active schema and migration history are authoritative.
 
 ## Scope and confirmed facts
 
@@ -87,11 +87,11 @@ Use three stages: expand -> backfill -> enforce. No reset, table replacement, bl
 ### C. Enforce: require ownership
 
 - As soon as authenticated goal writes are introduced, derive userId from verified authentication on the server. Ignore/reject any client attempt to select another owner.
-- Make all resource queries/mutations ownership-scoped. NULL-owned legacy goals must be invisible to ordinary users during transition.
+- Make all resource queries/mutations ownership-scoped. NULL-owned legacy goals must be invisible to ordinary users during transition. Review/close direct Supabase Data API access to Goal alongside that rollout so it cannot bypass backend ownership; the newly added credential/session tables already use deny-by-default RLS.
 - After all intended rows are assigned and a read-only check proves zero NULL owners, review a second migration that makes userId required. Do not run it while unresolved legacy rows remain.
 - Verify anonymous requests are denied and User A cannot read/update/delete User B's goals. Use a safe 404 for inaccessible resource lookups to avoid disclosing another user's record existence.
 
-Apply and backfill are separate from this design checkpoint. No live Supabase operation is needed today.
+The additive apply stage is now complete and verified. Backfill and required ownership remain separate future steps after the actual owner account is created and verified.
 
 ## Incremental implementation order and API plan
 
@@ -110,4 +110,4 @@ Email verification, recovery, account deletion and further account settings need
 
 Recommendations were checked against [OWASP session management](https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html), [password storage](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html), [CSRF prevention](https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html) and [Prisma expand/contract guidance](https://www.prisma.io/docs/guides/database/data-migration). [RFC 9700 refresh-token protection](https://www.rfc-editor.org/rfc/rfc9700.html#section-4.14) informs rotation/reuse handling; CareerOS is not claiming to implement an OAuth authorization server.
 
-Implementation status: local proposal schema/SQL prepared outside active migrations and validated with Prisma 7.10.0. Embedded PGlite tests apply initial/draft DDL to fictional data and verify preservation, uniqueness/references, restrictive deletion, indexes and transactional rollback. Runtime behavior, active schema/client/migration history and Supabase remain unchanged. On 23 November the owner said backup readiness is uncertain and requested help checking before applying. Target-compatible staging, live metadata/legacy snapshot, backup/restore readiness and verified destination account remain pending. See `backend/prisma/proposals/auth/README.md` for promotion prerequisites.
+Implementation status: foundation migration applied on 23 November 2026 after a restore-verified application-schema/data backup, native PostgreSQL 17 rehearsal of exact SQL, permission/freshness/drift checks and automated regression tests. SQL is transactional, with a 5-second lock timeout and 30-second statement timeout, and enables RLS without public policies on User/AuthSession/RefreshToken. Post-apply checks confirmed original goal values/history preserved, NULL ownership, empty new tables, matching migration checksum and no model drift. Prisma client generation, build/typecheck, 62 reported tests and read-only compiled-server smoke/shutdown passed. Backup scope excludes roles/privileges/managed services and is local-only; it is not a full-platform recovery certification. Account APIs, session logic, CSRF/browser changes, verified destination account, backfill and required ownership remain pending. Never edit/replay the applied SQL to make subsequent changes; add another reviewed migration.
