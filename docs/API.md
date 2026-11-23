@@ -1,6 +1,6 @@
 # CareerOS API contracts
 
-Updated 22 November 2026. Development base URL: http://localhost:3000. Authentication is not implemented. Do not expose this as a finished multi-user API.
+Updated 24 November 2026. Development base URL: http://localhost:3000. Registration is implemented; login and protected-resource authentication are not. Do not expose this as a finished multi-user API.
 
 ## POST /api/goals
 
@@ -40,7 +40,27 @@ Unexpected goal-service failures now propagate through Express 5's async error h
 
 - GET / returns app information, not a live readiness check.
 - GET /api/users/profile returns a static demonstration profile.
-- POST /api/users/register returns 501 `{message: "Registration is not implemented yet"}` without logging/echoing its body or creating an account. This deliberately replaces the earlier misleading success response. Real registration is planned for M2.
+- POST /api/users/register creates a validated account as described below. It does not establish a session.
+
+## POST /api/users/register
+
+Content-Type: application/json. Required fields:
+
+| Field | Contract |
+| --- | --- |
+| name | Trimmed nonempty text, at most 100 characters |
+| email | Trimmed, lowercased valid email, at most 254 characters; uniqueness follows this application normalization policy |
+| password | At least 15 Unicode code points and at most 72 UTF-8 bytes; not trimmed/normalized; NUL, malformed Unicode and whitespace-only values rejected |
+
+Unknown fields are ignored; clients cannot choose id, passwordHash, role or ownership. Email normalization does not remove provider-specific dots or plus tags. Password length is not a guarantee of password strength; comprehensive compromised-password screening remains a public-launch prerequisite.
+
+Success: 201 `{message:"User registered successfully",data:{id,name,email,createdAt}}`, with createdAt serialized as a date string. No password/hash/token/session fields or cookie are returned. bcrypt cost 12 generates a random salt; the hash is persisted and explicit public fields are selected from Prisma and serialized again at the controller boundary.
+
+Validation failure: 400 `{message:"Invalid registration data",errors:[{field,message}]}` without echoing input. Duplicate email: 409 `{message:"An account with this email already exists"}`. PostgreSQL's unique constraint handles concurrency; both standard Prisma email-target metadata and the pinned PostgreSQL adapter's User_email_key constraint metadata are recognized. Unrelated uniqueness/database failures remain generic 500 errors, with no raw exception in response/logs.
+
+Signup requests have an additional 10-attempt/IP/15-minute budget, before parsing/hashing; exhaustion returns 429 `{message:"Too many registration attempts; try again later"}`. The existing API-wide budget also applies. This explicit 409 makes registered email existence observable; privacy-preserving email-verification/recovery design remains future work.
+
+Registration does not log credentials, authenticate a user, issue tokens, create sessions or assign legacy goals. A valid manual request writes to the configured database; use the automated suites with fictional isolated data for practice rather than repeatedly creating live test accounts.
 
 ## Response convention
 

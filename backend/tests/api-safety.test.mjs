@@ -5,7 +5,7 @@ import test from "node:test";
 process.env.DATABASE_URL = "postgresql://test:test@127.0.0.1:1/careeros_test";
 const { default: app } = await import("../src/app.ts");
 
-test("placeholder registration and unknown routes return safe JSON", async (t) => {
+test("invalid registration and unknown routes return safe JSON", async (t) => {
     const server = app.listen(0, "127.0.0.1");
     await once(server, "listening");
     const base = `http://127.0.0.1:${server.address().port}`;
@@ -22,8 +22,11 @@ test("placeholder registration and unknown routes return safe JSON", async (t) =
                     headers: { "content-type": "application/json" },
                     body: JSON.stringify({ email: "student@example.test", password: "SYNTHETIC_SECRET_NEVER_LOG" }),
                 });
-                assert.equal(response.status, 501);
-                assert.deepEqual(await response.json(), { message: "Registration is not implemented yet" });
+                assert.equal(response.status, 400);
+                const body = await response.json();
+                assert.equal(body.message, "Invalid registration data");
+                assert.ok(body.errors.some((error) => error.field === "name"));
+                assert.doesNotMatch(JSON.stringify(body), /SYNTHETIC_SECRET_NEVER_LOG/);
                 assert.deepEqual(logs, []);
             } finally {
                 for (const spy of spies) spy.mock.restore();

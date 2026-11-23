@@ -145,3 +145,21 @@ test("API limit returns safe 429, excludes preflight/root and resists spoofed fo
         assert.equal((await fetch(base)).status, 200);
     });
 });
+
+test("registration has its own 10-attempt budget before validation and hashing", async () => {
+    await withServer(async (base) => {
+        for (let index = 0; index < 10; index++) {
+            const response = await fetch(base + "/api/users/register", {
+                method: "POST", headers: { "content-type": "application/json" }, body: "{}",
+            });
+            assert.equal(response.status, 400);
+            await response.arrayBuffer();
+        }
+        const response = await fetch(base + "/api/users/register", {
+            method: "POST", headers: { "content-type": "application/json" }, body: "{}",
+        });
+        assert.equal(response.status, 429);
+        assert.deepEqual(await response.json(), { message: "Too many registration attempts; try again later" });
+        assert.equal((await fetch(base + "/api/users/profile")).status, 200);
+    });
+});

@@ -1,4 +1,5 @@
 import type { NextFunction, Request, Response } from "express";
+import { ApiError } from "../utils/api-error.js";
 
 export const notFoundHandler = (_req: Request, res: Response) => {
     res.status(404).json({ message: "Route not found" });
@@ -12,6 +13,11 @@ export const errorHandler = (
 ) => {
     if (res.headersSent) {
         next(error);
+        return;
+    }
+
+    if (error instanceof ApiError) {
+        res.status(error.statusCode).json({ message: error.message });
         return;
     }
 

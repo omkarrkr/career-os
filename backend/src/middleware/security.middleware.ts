@@ -44,4 +44,13 @@ export const configureHttpSecurity = (app: Express, settings: SecuritySettings) 
         legacyHeaders: false,
         message: { message: "Too many requests; try again later" },
     }));
+
+    app.use("/api/users/register", rateLimit({
+        windowMs: 15 * 60 * 1000,
+        limit: 10,
+        standardHeaders: "draft-8",
+        legacyHeaders: false,
+        skip: (req) => req.method !== "POST",
+        message: { message: "Too many registration attempts; try again later" },
+    }));
 };

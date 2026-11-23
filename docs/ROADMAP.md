@@ -1,6 +1,6 @@
 # CareerOS ordered development roadmap
 
-Updated 23 November 2026. Baseline: repository audit dated 17 November 2026. The owner has authorized continuing development in small, explained, verified steps and making Git checkpoints at stable milestones. Each milestone below is split into manageable tasks; completing the entire long-term backlog is not required for the first release.
+Updated 24 November 2026. Baseline: repository audit dated 17 November 2026. The owner has authorized continuing development in small, explained, verified steps and making Git checkpoints at stable milestones. Each milestone below is split into manageable tasks; completing the entire long-term backlog is not required for the first release.
 
 ## Release goal and scope
 
@@ -89,7 +89,8 @@ Acceptance: malformed requests return safe actionable errors; valid goal behavio
 - [ ] Establish backup readiness and capture legacy record metadata using read-only access; verify destination account before backfill.
 - [x] Draft/review additive schema/SQL outside active migration path; validate with Prisma and embedded PostgreSQL preservation/constraint/rollback tests.
 - [x] Verify scoped application backup/restore, native PostgreSQL staging, permissions/freshness/drift; promote/apply the additive migration and verify preservation. Initial migration remains unchanged.
-- [ ] Implement validated registration/login with password hashing and public-field responses.
+- [x] Implement validated registration, bcrypt hashing, safe public fields, unique-email race handling and signup throttling.
+- [ ] Implement login and verify credentials without exposing account/password details.
 - [ ] Implement JWT/session expiry, refresh rotation/revocation where appropriate, logout and protected routes.
 - [ ] Add ownership enforcement, account/profile APIs and password change.
 - [ ] Test duplicate registration, invalid credentials, expired tokens and cross-user access.
@@ -99,6 +100,8 @@ M2 design checkpoint (23 November): owner confirms all existing Supabase goals a
 M2 proposal checkpoint (23 November): `backend/prisma/proposals/auth` contains candidate schema, transactional additive SQL and review instructions. Active schema and migration history are untouched. Fictional initial goals survive the migration unchanged with NULL ownership; new tables start empty; constraints/indexes and rollback are tested in PGlite. Both schemas validate, build/typecheck and 61 reported tests pass. Existing package versions/integrity remain unchanged; existing PGlite 0.4.3 is declared directly for tests. No Supabase access was used. Owner is unsure about backup readiness and requests help checking before any remote change. Embedded tests are not full target-server/Prisma-client verification. Backup, target-compatible staging, live metadata/snapshot, migration promotion and backfill remain pending.
 
 M2 database rollout (23 November): migration `20261123140042_add_auth_sessions_and_goal_owner` applied via Prisma after scoped backup/restore proof, exact-SQL native PostgreSQL rehearsal and live permission/freshness/drift checks. Adds empty User/AuthSession/RefreshToken tables, nullable Goal.userId and indexes/FKs; RLS denies ordinary-role access to credential/session rows. Existing Goal values, unassigned ownership and initial history were preserved; checksum/status/drift verification passes. Regenerated client, build/typecheck, 62 reported tests and compiled live read-only smoke/graceful shutdown pass. Authentication endpoints/backfill remain pending. Recovery artifacts and personal notes stay ignored/local; no credentials, real goal contents or backups are committed.
+
+M2 registration (verified 24 November): name/email/password validation, lowercased email identity, byte-bounded password policy, async bcrypt cost 12, public-field-only responses and 10-attempt/IP/15-minute signup throttling implemented. PostgreSQL uniqueness resolves races; the actual Prisma adapter constraint metadata was verified through isolated integration tests, then handled without exposing raw details. Typecheck/build and 72 default tests plus five isolated PostgreSQL integration tests pass. Tests create fictional local accounts only; no Supabase records/schema were changed and no legacy goal was claimed. Login/session/CSRF/ownership remain pending. Comprehensive compromised-password screening, verification/recovery and production abuse controls remain public-launch work.
 
 Acceptance: two users cannot access each other's resources; existing data is preserved with explicit legitimate ownership decisions.
 

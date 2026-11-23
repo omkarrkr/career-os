@@ -26,7 +26,7 @@ After startup, SIGINT/SIGTERM handlers request shutdown once. HTTP stops accepti
 - `schema.prisma` describes Goal, User, AuthSession and RefreshToken. SQL migrations describe database changes over time.
 - The generated Prisma client supplies database types and query methods; it is ignored and must be generated locally.
 
-The goal path is `POST /api/goals -> createGoalController -> Zod schema validation -> createGoal -> prisma.goal.create -> PostgreSQL`. Invalid input stops at the controller with a 400. The schema trims required strings and selects only supported fields. A JSON 404 handler follows routes; final error middleware follows that. Async goal-service rejections reach the shared handler through Express 5, returning a generic 500 and logging a fixed event without raw exception data. Profile returns static data; registration returns 501 without logging or echoing its body. Root information is returned directly from `app.ts`. There is no frontend or AI layer.
+The goal path is `POST /api/goals -> createGoalController -> Zod schema validation -> createGoal -> prisma.goal.create -> PostgreSQL`. Invalid input stops at the controller with a 400. The schema trims required strings and selects only supported fields. A JSON 404 handler follows routes; final error middleware follows that. Async failures reach the shared handler through Express 5, returning a generic 500 and fixed safe log event. Profile remains static. Registration follows schema validation -> user service -> asynchronous bcrypt hash -> Prisma create with public-field selection; the controller serializes public fields again. A deliberate ApiError maps the known email uniqueness violation to 409 without exposing adapter diagnostics. No frontend or AI layer exists.
 
 ## Configuration and boundaries
 
@@ -50,7 +50,7 @@ React/TypeScript/Vite UI
                                -> private document storage (when required)
 ```
 
-Zod is installed for goal input validation. bcrypt, JWT and the frontend stack remain planned. Prefer authentication before exposing more user-owned CRUD. Model User ownership explicitly. For existing Goal rows, plan a non-destructive ownership transition: inspect counts without exposing data, decide legitimate ownership, add a compatible nullable relation if needed, backfill deliberately, then enforce required ownership only after verification. Never assign old records arbitrarily to a new account.
+Zod validates goal/signup inputs and bcrypt hashes registration passwords at cost 12. A separate signup limiter precedes parsing/hashing. JWT/session flow and the frontend remain planned; registration creates no session. Existing Goal ownership remains nullable until verified account linkage/backfill. Never assign old records to the first signup. Unit/API tests replace persistence; the separately gated local PostgreSQL integration test verifies actual Prisma writes and duplicate races without touching Supabase.
 
 Add relational models only as their feature is implemented. User/Profile anchor skills, projects, goals and later roadmaps/applications. Multi-record writes should use transactions. Index ownership and proven query patterns; paginate lists. Document cascade/delete behavior before migrations.
 

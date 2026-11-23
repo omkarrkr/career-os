@@ -14,7 +14,7 @@ CareerOS is a full-stack AI platform that helps engineering students with:
 
 ## Current Status
 
-The backend foundation is verified as of 22 November 2026: type checking, compilation, database connectivity, migration status and compiled startup pass. The frontend (React + TypeScript + Tailwind CSS) is **not yet built** — this repo currently contains only the Node.js/Express backend. Goal creation now validates input and has automated API tests. User endpoints are placeholders, and goal creation is not authenticated; this is not a production-ready multi-user API.
+The backend foundation is verified. The frontend (React + TypeScript + Tailwind CSS) is **not yet built** — this repo currently contains only the Node.js/Express backend. Goal creation validates input and registration creates users with bcrypt-hashed passwords and public-field-only responses. Login is not implemented, the profile is still a placeholder, and goal creation is not authenticated; this is not a production-ready multi-user API.
 
 The first release connects a target role, skill/project evidence, explained gaps, goals, a roadmap and a reviewed AI weekly plan. The features above describe the longer-term vision. See [the active milestones](docs/ROADMAP.md), [architecture](docs/ARCHITECTURE.md) and [historical audit](docs/PROJECT_AUDIT.md).
 
@@ -82,7 +82,7 @@ model Goal {
 }
 ```
 
-This Goal field excerpt omits relation/index declarations; see the active Prisma schema for the full definition. User, AuthSession and RefreshToken now provide the database foundation for authentication. Goal ownership remains optional during transition; registration/login and ownership enforcement are not implemented yet.
+This Goal field excerpt omits relation/index declarations; see the active Prisma schema for the full definition. User, AuthSession and RefreshToken provide the database foundation for authentication. Registration is implemented; goal ownership remains optional, with login/session logic and ownership enforcement pending.
 
 ## API Endpoints
 
@@ -91,7 +91,7 @@ This Goal field excerpt omits relation/index declarations; see the active Prisma
 | GET    | `/`                   | Health check / app info  |
 | POST   | `/api/goals`          | Create a new goal        |
 | GET    | `/api/users/profile`   | Return a static demo profile |
-| POST   | `/api/users/register`  | Placeholder: returns 501; does not log or echo submitted data |
+| POST   | `/api/users/register`  | Validate signup, hash password and create a user; return public fields |
 
 ## Getting Started
 
@@ -157,9 +157,15 @@ From `backend`, run `npm.cmd test`. The Node test runner uses tsx to import Type
 
 ### M2 authentication database foundation
 
-Migration `20261123140042_add_auth_sessions_and_goal_owner` adds account/session tables and nullable Goal.userId, with indexes, restrictive foreign keys and RLS on the three credential/session tables. It was rehearsed on an isolated native PostgreSQL 17 restore, then applied on 23 November 2026. Existing goal values and original migration history were preserved; no ownership backfill or account creation occurred. Registration remains a placeholder.
+Migration `20261123140042_add_auth_sessions_and_goal_owner` adds account/session tables and nullable Goal.userId, with indexes, restrictive foreign keys and RLS on the three credential/session tables. It was rehearsed on an isolated native PostgreSQL 17 restore, then applied on 23 November 2026. Existing goal values and original migration history were preserved; no ownership backfill or account creation occurred during migration. Registration now creates accounts but does not sign them in or claim old goals.
 
-The active schema/migrations are authoritative; [the proposal folder](backend/prisma/proposals/auth/README.md) is now historical reference. `npm.cmd run test:migration:auth` tests the committed migration against fictional old goals in PGlite, including preservation, uniqueness, references, transaction rollback and ordinary-role RLS denial. The full suite currently reports 62 passing tests. Keep backup/recovery artifacts local and ignored. For another environment, review pending SQL and deployment readiness before applying committed migrations with `prisma migrate deploy --config prisma7.config.ts`; regenerate the runtime client after its target schema is compatible. Do not replay the archived proposal SQL or edit applied migration history.
+The active schema/migrations are authoritative; [the proposal folder](backend/prisma/proposals/auth/README.md) is now historical reference. `npm.cmd run test:migration:auth` tests the committed migration against fictional old goals in PGlite, including preservation, uniqueness, references, transaction rollback and ordinary-role RLS denial. The default suite currently reports 72 passing tests. Keep backup/recovery artifacts local and ignored. For another environment, review pending SQL and deployment readiness before applying committed migrations with `prisma migrate deploy --config prisma7.config.ts`; regenerate the runtime client after its target schema is compatible. Do not replay the archived proposal SQL or edit applied migration history.
+
+### Registration
+
+POST /api/users/register accepts name, email and password; see [the API contract](docs/API.md). Identity strings are trimmed and email is lowercased. Passwords are unchanged, at least 15 Unicode code points and at most 72 UTF-8 bytes; bcrypt cost 12 uses a random salt. Responses include only id/name/email/createdAt. Duplicate normalized emails return 409, including concurrent signup races. Signup has its own 10-attempt/IP/15-minute limit before hashing. This explicit conflict response reveals email registration status; reconsider that tradeoff with the future verification/recovery flow. Email verification, comprehensive compromised-password screening, login and sessions are not completed by signup alone.
+
+`npm.cmd run test:integration:registration` exercises real Prisma/PostgreSQL registration using TEST_DATABASE_URL. It skips without that variable and refuses non-loopback URLs, query overrides, database names without the `careeros_test_registration_` prefix, or a nonempty public schema. Supply a fresh disposable database named `careeros_test_registration_<suffix>` on your own local PostgreSQL server. The integration suite applies committed migrations and inserts fictional data; never point it at the application database. It verified hash storage, real duplicate-error mapping, simultaneous duplicate requests and no session/legacy-goal claiming. The default unit/API suite uses stand-ins for persistence; the separately run integration suite reports five passing tests including its parent.
 
 ## Environment Variables
 
@@ -179,6 +185,8 @@ Helmet supplies security headers and hides Express's identifying header. HTTPS-o
 Set `CORS_ORIGINS=http://localhost:5173` locally when the future Vite frontend needs access. Origins must match exactly, with no path, credentials, wildcard or trailing slash; multiple origins are comma-separated. Your existing private `.env` was not modified. An explicit unapproved Origin receives JSON 403 before route processing. No-Origin clients such as PowerShell still work. CORS permissions currently cover GET/POST and Content-Type/Authorization, with cookie credentials disabled; revisit this deliberately when choosing the authentication session strategy. CORS is not authentication or a replacement for CSRF protection.
 
 API paths share a limit of 100 requests per IP per 15 minutes, counting successes and failures. Exceeding it returns JSON 429 with Retry-After and standard rate-limit headers. Approved CORS preflights and the root app-information route do not consume that budget. The counter is in memory per server process, resets on restart, and is not distributed DDoS protection; shared-IP users also share a budget. Express retains trust-proxy=false so caller-supplied forwarding headers cannot choose their own rate-limit identity. Review the actual trusted proxy chain and shared counter requirements before production deployment.
+
+POST /api/users/register additionally has a 10-attempt/IP/15-minute budget; failed attempts count too. These IP-based limits do not provide complete account-abuse prevention.
 
 ## Roadmap
 
