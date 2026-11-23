@@ -87,13 +87,16 @@ Acceptance: malformed requests return safe actionable errors; valid goal behavio
 
 - [x] Document proposed User/session/token design and staged ownership migration (23 November 2026; AUTH_DESIGN.md). No migration prepared/applied yet.
 - [ ] Establish backup readiness and capture legacy record metadata using read-only access; verify destination account before backfill.
-- [ ] Draft/review additive schema and migration; verify on an isolated database before remote application. Preserve initial migration and all goals.
+- [x] Draft/review additive schema/SQL outside active migration path; validate with Prisma and embedded PostgreSQL preservation/constraint/rollback tests.
+- [ ] Confirm usable backup/restore and target-compatible staging/live metadata before promoting/applying the proposal. Preserve initial migration and all goals.
 - [ ] Implement validated registration/login with password hashing and public-field responses.
 - [ ] Implement JWT/session expiry, refresh rotation/revocation where appropriate, logout and protected routes.
 - [ ] Add ownership enforcement, account/profile APIs and password change.
 - [ ] Test duplicate registration, invalid credentials, expired tokens and cross-user access.
 
 M2 design checkpoint (23 November): owner confirms all existing Supabase goals are theirs. Plan User/AuthSession/RefreshToken plus initially nullable indexed Goal.userId; do not auto-assign to first signup. Propose short-lived JWT access in memory and rotated HttpOnly refresh cookies with stored hashes/history, active-session checks for revocation and CSRF protection before cookie auth. Retain bcrypt per original requirement while documenting Argon2id as OWASP's modern preference and bcrypt's byte limit/work-factor constraints. Next steps are additive SQL preparation, isolated verification and backup readiness; no live connection, schema changes or row updates occurred in this documentation step. See AUTH_DESIGN.md and the simple walkthrough in MILESTONE_NOTES.md.
+
+M2 proposal checkpoint (23 November): `backend/prisma/proposals/auth` contains candidate schema, transactional additive SQL and review instructions. Active schema and migration history are untouched. Fictional initial goals survive the migration unchanged with NULL ownership; new tables start empty; constraints/indexes and rollback are tested in PGlite. Both schemas validate, build/typecheck and 61 reported tests pass. Existing package versions/integrity remain unchanged; existing PGlite 0.4.3 is declared directly for tests. No Supabase access was used. Owner is unsure about backup readiness and requests help checking before any remote change. Embedded tests are not full target-server/Prisma-client verification. Backup, target-compatible staging, live metadata/snapshot, migration promotion and backfill remain pending.
 
 Acceptance: two users cannot access each other's resources; existing data is preserved with explicit legitimate ownership decisions.
 

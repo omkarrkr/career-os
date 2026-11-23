@@ -1,6 +1,6 @@
 # M2: accounts, sessions and safe goal ownership
 
-Design date: 23 November 2026. This is a plan, not implemented functionality. No Prisma schema, migration, dependency, runtime code or remote database is changed in this step.
+Design date: 23 November 2026. Account/session functionality is not implemented. The initial design checkpoint changed documentation only. A subsequent local-only proposal now exists under `backend/prisma/proposals/auth/` and has isolated engine tests; the active schema, active migrations, runtime client and remote database remain unchanged.
 
 ## Scope and confirmed facts
 
@@ -110,4 +110,4 @@ Email verification, recovery, account deletion and further account settings need
 
 Recommendations were checked against [OWASP session management](https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html), [password storage](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html), [CSRF prevention](https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html) and [Prisma expand/contract guidance](https://www.prisma.io/docs/guides/database/data-migration). [RFC 9700 refresh-token protection](https://www.rfc-editor.org/rfc/rfc9700.html#section-4.14) informs rotation/reuse handling; CareerOS is not claiming to implement an OAuth authorization server.
 
-Implementation status: design documented only. Existing runtime behavior, schema and database remain unchanged. Backup readiness, exact legacy ID set, destination account identity and tested migration SQL are not yet established.
+Implementation status: local proposal schema/SQL prepared outside active migrations and validated with Prisma 7.10.0. Embedded PGlite tests apply initial/draft DDL to fictional data and verify preservation, uniqueness/references, restrictive deletion, indexes and transactional rollback. Runtime behavior, active schema/client/migration history and Supabase remain unchanged. On 23 November the owner said backup readiness is uncertain and requested help checking before applying. Target-compatible staging, live metadata/legacy snapshot, backup/restore readiness and verified destination account remain pending. See `backend/prisma/proposals/auth/README.md` for promotion prerequisites.

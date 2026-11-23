@@ -462,3 +462,70 @@ Free quotas can be useful for controlled prototyping, but cannot be assumed suff
 Challenge: why should viewing a saved roadmap use zero new AI calls, while pressing Regenerate may use one or more? Why do 100 allowed CareerOS API requests not necessarily mean 100 available Gemini requests?
 
 References: [Gemini rate limits](https://ai.google.dev/gemini-api/docs/rate-limits), [pricing](https://ai.google.dev/gemini-api/docs/pricing), [billing](https://ai.google.dev/gemini-api/docs/billing), [data-use terms](https://ai.google.dev/gemini-api/terms), [Google's subscription/API credit explanation](https://blog.google/innovation-and-ai/technology/developers-tools/google-cloud-credits-gdp-ai-studio/). Recheck these changing details when AI integration begins.
+
+## M2, proposal step: draft the database change without touching Supabase
+
+Date: 23 November 2026. We prepared a candidate schema and SQL, reviewed them and tested them locally. We did not apply them to Supabase or change the active schema/runtime client. Registration is still a placeholder.
+
+### Think of this as a building plan
+
+The active schema is the description of the building we currently use. The proposal is a drawing for an extension. We must not tell the application to use rooms that have not been built yet. That is why the new files are in `prisma/proposals/auth`, not the active migration folder, and why we did not regenerate the real runtime client from them.
+
+### What the draft adds
+
+- User: account name, unique normalized email and private password verifier.
+- AuthSession: a user's signed-in session and expiry/revocation information.
+- RefreshToken: hashed renewal passes and their usage history.
+- Goal.userId: an optional link from a goal to its owner. It starts empty for old goals; nobody gets assigned automatically.
+
+Every original Goal field stays as it was. We do not update titles, IDs, dates, status or descriptions. The initial migration stays unchanged.
+
+### New database concepts
+
+- Nullable means a field may be empty. SQL calls this empty marker NULL. It is not user ID 0 or an empty string.
+- Foreign key means a reference must point to an existing parent. A goal cannot reference a user who does not exist.
+- Unique means a value cannot be duplicated, such as our normalized email or a refresh-token hash. Application code still has to normalize emails; the plain-text unique rule alone does not make differently cased strings identical.
+- Index is a lookup aid, like a book's index. Goal.userId gets one so finding a user's goals need not require scanning every goal.
+- Restrict deletion means the database refuses to remove a parent while other rows reference it, rather than deleting related history automatically.
+- Transaction groups changes together. Our draft SQL is wrapped in BEGIN/COMMIT. If a later statement fails, rolling back removes earlier changes from that same transaction too.
+
+### What PGlite does for this step
+
+PGlite is PostgreSQL packaged to run inside Node through WebAssembly. In our tests, it creates a temporary database in memory, uses the original migration, inserts fictional old goals, then applies the draft. It has no Supabase connection string or network access. Closing it discards the test database.
+
+It was already installed as a dependency of another tool. We declared its exact existing 0.4.3 version as a direct development/test dependency so our tests do not secretly rely on another package continuing to include it. No existing package version was upgraded.
+
+### What the tests proved, and what they did not
+
+The fictional old goals kept every existing value and had NULL ownership. New account/session/token tables started empty. Duplicate email/token hashes and nonexistent foreign-key references were rejected. Restrictive deletion and indexes worked. A deliberately conflicting table caused the migration to fail, and ROLLBACK removed the earlier added column while preserving the fictional goal.
+
+Both schemas validate; type checking/build pass; the full runner reports 61 passing tests, including parent tests. The original active schema/migration and resolved package versions were also checked. A comparison initially noticed Windows versus Git line endings; normalizing those endings confirmed the active schema's content is unchanged.
+
+These embedded tests do not prove target Supabase version/permissions, database locks, live drift, backups or real Prisma-user queries. Target-compatible staging and backup/restore checks remain prerequisites before applying remotely. You said you are unsure of backup readiness and want help checking: that is our next safety prerequisite, not something assumed complete.
+
+### Files and commands
+
+The proposed models are in `backend/prisma/proposals/auth/schema.prisma`; the reviewed SQL is beside them in `migration.sql`. The proposal README lists review/promotion requirements. `backend/tests/auth-migration.test.mjs` contains the database-engine tests. Existing API source is unchanged.
+
+```powershell
+Set-Location C:\PROJECTS\career-os\backend
+npm.cmd run prisma:validate:auth-proposal
+npm.cmd run test:migration:auth
+npm.cmd run typecheck
+npm.cmd run build
+npm.cmd test
+```
+
+Expected: a valid proposal, nine reported isolated-migration tests, successful compilation and 61 reported full-suite tests. These commands have already been run successfully. None applies the proposal to Supabase. Do not execute its SQL remotely yet or move it into active migrations as a shortcut.
+
+### Interview Q&A, common mistakes and challenge
+
+Q: Why leave ownership optional initially? A: Old goals exist before their real owner account exists. We preserve them, then backfill only the verified records to the verified account.
+
+Q: Why test old rows rather than only empty tables? A: Creating tables successfully does not prove a migration preserves existing data.
+
+Q: Does a schema constraint implement authentication? A: No. It can stop invalid references/duplicates, but application code must still verify identity, hash passwords and enforce ownership.
+
+Avoid applying a draft simply because it validates, generating a runtime client for an undeployed schema, treating embedded tests as a backup, and assigning all goals to the first signup.
+
+Challenge: explain what could happen if the client started selecting Goal.userId today while the real table still has only its original columns. Why does keeping a separate proposal avoid that problem?

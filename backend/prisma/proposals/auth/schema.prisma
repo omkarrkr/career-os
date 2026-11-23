@@ -1,0 +1,54 @@
+// M2 proposal only. Not the active schema; do not generate the runtime client here.
+// Ownership remains optional until the verified legacy-goal backfill is complete.
+datasource db {
+  provider = "postgresql"
+}
+
+model Goal {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String?
+  category    String
+  status      String   @default("ACTIVE")
+  targetDate  DateTime?
+  createdAt   DateTime @default(now())
+  userId      Int?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([userId])
+}
+
+model User {
+  id           Int           @id @default(autoincrement())
+  name         String
+  email        String        @unique
+  passwordHash String
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  goals        Goal[]
+  sessions     AuthSession[]
+}
+
+model AuthSession {
+  id            String         @id @default(uuid()) @db.Uuid
+  userId        Int
+  user          User           @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  createdAt     DateTime       @default(now())
+  expiresAt     DateTime
+  revokedAt     DateTime?
+  refreshTokens RefreshToken[]
+
+  @@index([userId])
+}
+
+model RefreshToken {
+  id        String      @id @default(uuid()) @db.Uuid
+  sessionId String      @db.Uuid
+  session   AuthSession @relation(fields: [sessionId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  tokenHash String      @unique
+  createdAt DateTime    @default(now())
+  expiresAt DateTime
+  usedAt    DateTime?
+
+  @@index([sessionId])
+}
