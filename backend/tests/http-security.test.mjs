@@ -196,6 +196,18 @@ test("login has a separate 10-attempt budget even for requests rejected by CSRF"
     });
 });
 
+test("password change has a five-attempt budget before CSRF and password hashing", async () => {
+    await withServer(async (base) => {
+        for (let index = 0; index < 6; index++) {
+            const response = await fetch(base + "/api/auth/change-password", { method: "POST",
+                headers: { Origin: allowedOrigin, "Content-Type": "application/json" }, body: "{}" });
+            assert.equal(response.status, index < 5 ? 403 : 429);
+            if (index === 5) assert.deepEqual(await response.json(), { message: "Too many password change attempts; try again later" });
+            else await response.arrayBuffer();
+        }
+    });
+});
+
 test("auth endpoints reject unsupported content and missing or forged CSRF before database access", async () => {
     await withServer(async (base) => {
         const bootstrap = await fetch(base + "/api/auth/csrf", { headers: { Origin: allowedOrigin } });

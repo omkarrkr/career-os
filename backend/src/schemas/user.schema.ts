@@ -17,3 +17,10 @@ export const registerUserSchema = z.object({
 });
 
 export type RegisterUserInput = z.infer<typeof registerUserSchema>;
+
+export const changePasswordSchema = z.object({
+    currentPassword: registerUserSchema.shape.password,
+    newPassword: registerUserSchema.shape.password,
+}).refine((value) => value.currentPassword !== value.newPassword, {
+    path: ["newPassword"], message: "New password must differ from current password",
+});

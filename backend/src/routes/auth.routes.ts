@@ -4,7 +4,8 @@ import cookieParser from "cookie-parser";
 import { doubleCsrf } from "csrf-csrf";
 import { randomBytes } from "node:crypto";
 import type { readEnvironment } from "../config/env.js";
-import { registerUserSchema } from "../schemas/user.schema.js";
+import { registerUserSchema, changePasswordSchema } from "../schemas/user.schema.js";
+import { authentication } from "../middleware/authentication.middleware.js";
 import { createAuthService } from "../services/auth.service.js";
 import { ApiError } from "../utils/api-error.js";
 import { ACCESS_SECONDS, SESSION_MS } from "../utils/auth-tokens.js";
@@ -79,6 +80,15 @@ export const createAuthRouter = (settings: ReturnType<typeof readEnvironment>) =
             if (error instanceof ApiError && error.statusCode === 401) clear(res);
             throw error;
         }
+    });
+    router.post("/change-password", authentication(settings), async (req, res) => {
+        const identity: { userId: number; sessionId: string } = res.locals.auth;
+        if (cookieValue(req, names.binding) !== identity.sessionId) throw new ApiError(403, "Session binding mismatch");
+        const parsed = changePasswordSchema.safeParse(req.body);
+        if (!parsed.success) throw new ApiError(400, "Invalid password change data");
+        await service.changePassword(identity.userId, identity.sessionId, parsed.data.currentPassword, parsed.data.newPassword);
+        clear(res);
+        res.json({ message: "Password changed successfully; sign in again" });
     });
     router.post("/logout", async (req, res) => {
         await service.logout(cookieValue(req, names.refresh), cookieValue(req, names.binding)!);

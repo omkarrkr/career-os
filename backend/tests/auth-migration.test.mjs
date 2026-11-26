@@ -7,7 +7,31 @@ import { PGlite } from "@electric-sql/pglite";
 const initialSql = await readFile(new URL("../prisma/migrations/20260915165713_init/migration.sql", import.meta.url), "utf8");
 const migrationSql = await readFile(new URL("../prisma/migrations/20261123140042_add_auth_sessions_and_goal_owner/migration.sql", import.meta.url), "utf8");
 const goalSecuritySql = await readFile(new URL("../prisma/migrations/20261124120000_protect_goal_data_api/migration.sql", import.meta.url), "utf8");
+const requiredOwnerSql = await readFile(new URL("../prisma/migrations/20261126190000_require_goal_owner/migration.sql", import.meta.url), "utf8");
 const rejectsWithCode = (operation, code) => assert.rejects(operation, (error) => error.code === code);
+
+test("mandatory ownership refuses unresolved rows, preserves linked goals and rejects ownerless writes", async () => {
+    const db = new PGlite();
+    try {
+        await db.exec(initialSql); await db.exec(migrationSql); await db.exec(goalSecuritySql);
+        await db.exec(`INSERT INTO "Goal" (title,category) VALUES ('Fictional unresolved goal','Development')`);
+        const unresolved = (await db.query('SELECT * FROM "Goal"')).rows;
+        await rejectsWithCode(db.exec(requiredOwnerSql), "P0001"); await db.exec("ROLLBACK");
+        assert.deepEqual((await db.query('SELECT * FROM "Goal"')).rows, unresolved);
+        assert.equal((await db.query(`SELECT is_nullable FROM information_schema.columns WHERE table_name='Goal' AND column_name='userId'`)).rows[0].is_nullable, "YES");
+        await db.exec(`INSERT INTO "User" (name,email,"passwordHash","updatedAt") VALUES ('Verified fictional owner','owner@example.test','fixture',NOW()); UPDATE "Goal" SET "userId"=1 WHERE id=1`);
+        const before = (await db.query('SELECT * FROM "Goal"')).rows;
+        await db.exec(requiredOwnerSql);
+        assert.deepEqual((await db.query('SELECT * FROM "Goal"')).rows, before);
+        for (const statement of [
+            `INSERT INTO "Goal" (title,category) VALUES ('Missing owner','Development')`,
+            `INSERT INTO "Goal" (title,category,"userId") VALUES ('NULL owner','Development',NULL)`,
+            `UPDATE "Goal" SET "userId"=NULL WHERE id=1`,
+        ]) await rejectsWithCode(db.exec(statement), "23502");
+        await rejectsWithCode(db.exec(`INSERT INTO "Goal" (title,category,"userId") VALUES ('Missing user','Development',999999)`), "23503");
+        assert.equal((await db.query(`SELECT relrowsecurity FROM pg_class WHERE oid='public."Goal"'::regclass`)).rows[0].relrowsecurity, true);
+    } finally { await db.close(); }
+});
 
 test("Goal RLS migration preserves rows, denies ordinary roles and refuses unexpected policies", async () => {
     const db = new PGlite();

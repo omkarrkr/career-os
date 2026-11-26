@@ -26,7 +26,8 @@ test("login and session lifecycle with isolated native PostgreSQL", { skip: !tes
         for (const name of migrations) await db.query(await readFile(new URL(`../../prisma/migrations/${name}/migration.sql`, import.meta.url), "utf8"));
         const hash = await bcrypt.hash(password, 12);
         await db.query(`INSERT INTO "User" (name,email,"passwordHash","updatedAt") VALUES ('Student','student@example.test',$1,NOW()), ('Other','other@example.test',$1,NOW())`, [hash]);
-        await db.query(`INSERT INTO "Goal" (title,category) VALUES ('Synthetic legacy goal','Development')`);
+        const legacyOwner = (await db.query(`SELECT id FROM "User" WHERE email='student@example.test'`)).rows[0].id;
+        await db.query(`INSERT INTO "Goal" (title,category,"userId") VALUES ('Synthetic linked legacy goal','Development',$1)`, [legacyOwner]);
         const { default: app } = await import("../../src/app.ts");
         ({ default: prisma } = await import("../../src/config/prisma.ts"));
         server = app.listen(0, "127.0.0.1");
@@ -153,7 +154,7 @@ test("login and session lifecycle with isolated native PostgreSQL", { skip: !tes
             assert.ok(expired.rows[0].expiresAt < new Date());
             assert.equal((await profile(body.accessToken)).status, 401);
             assert.equal((await post(client, "refresh")).status, 401);
-            assert.equal((await db.query('SELECT "userId" FROM "Goal"')).rows[0].userId, null);
+            assert.equal((await db.query('SELECT "userId" FROM "Goal"')).rows[0].userId, legacyOwner);
         });
     } finally {
         if (server) await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));

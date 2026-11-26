@@ -63,4 +63,9 @@ export const configureHttpSecurity = (app: Express, settings: SecuritySettings) 
         skip: (req) => req.method !== "POST",
         message: { message: "Too many login attempts; try again later" },
     }));
+    app.use("/api/auth/change-password", rateLimit({
+        windowMs: 15 * 60 * 1000, limit: 5, standardHeaders: "draft-8", legacyHeaders: false,
+        skip: (req) => req.method !== "POST",
+        message: { message: "Too many password change attempts; try again later" },
+    }));
 };

@@ -21,10 +21,16 @@ export const createAuthService = (settings: ReturnType<typeof readEnvironment>) 
             const expiresAt = new Date(Date.now() + SESSION_MS);
             const refreshToken = newRefreshToken();
             const accessToken = await tokens.issue(user.id, sessionId, expiresAt);
-            await prisma.authSession.create({ data: {
-                id: sessionId, userId: user.id, expiresAt,
-                refreshTokens: { create: { tokenHash: refreshHash(refreshToken), expiresAt } },
-            } });
+            await prisma.$transaction(async (tx) => {
+                // Serialize with password changes: an old password cannot create a late session.
+                await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${user.id} FOR UPDATE`;
+                const current = await tx.user.findUnique({ where: { id: user.id }, select: { passwordHash: true } });
+                if (!current || current.passwordHash !== user.passwordHash) throw new ApiError(401, "Invalid email or password");
+                await tx.authSession.create({ data: {
+                    id: sessionId, userId: user.id, expiresAt,
+                    refreshTokens: { create: { tokenHash: refreshHash(refreshToken), expiresAt } },
+                } });
+            });
             return { sessionId, expiresAt, refreshToken, accessToken,
                 user: { id: user.id, name: user.name, email: user.email, createdAt: user.createdAt } };
         },
@@ -59,6 +65,23 @@ export const createAuthService = (settings: ReturnType<typeof readEnvironment>) 
             if (token?.sessionId === binding) {
                 await prisma.authSession.updateMany({ where: { id: token.sessionId, revokedAt: null }, data: { revokedAt: new Date() } });
             }
+        },
+        changePassword: async (userId: number, sessionId: string, currentPassword: string, newPassword: string) => {
+            const user = await prisma.user.findUnique({ where: { id: userId }, select: { passwordHash: true } });
+            if (!user) throw invalidSession();
+            if (!await bcrypt.compare(currentPassword, user.passwordHash)) throw new ApiError(400, "Current password is incorrect");
+            if (currentPassword === newPassword) throw new ApiError(400, "New password must differ from current password");
+            const passwordHash = await hashPassword(newPassword);
+            await prisma.$transaction(async (tx) => {
+                await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${userId} FOR UPDATE`;
+                const current = await tx.user.findUnique({ where: { id: userId }, select: { passwordHash: true } });
+                const session = await tx.authSession.findUnique({ where: { id: sessionId } });
+                const now = new Date();
+                if (!current || current.passwordHash !== user.passwordHash || !session || session.userId !== userId
+                    || session.revokedAt || session.expiresAt <= now) throw invalidSession();
+                await tx.user.update({ where: { id: userId }, data: { passwordHash } });
+                await tx.authSession.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: now } });
+            });
         },
         authenticate: async (token: string) => {
             const identity = await tokens.verify(token);

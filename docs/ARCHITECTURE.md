@@ -1,6 +1,6 @@
 # CareerOS architecture
 
-Audited 17 November 2026; build configuration updated 22 November 2026. This document separates implemented behavior from intended design.
+Audited 17 November 2026; authentication/required ownership updated 26 November 2026. This document separates implemented behavior from intended design.
 
 ## Current system
 
@@ -36,7 +36,7 @@ Prisma CLI uses `prisma7.config.ts`; package scripts select this filename explic
 
 ## Planned architecture
 
-M2 database foundations are active as of 23 November 2026. Migration `20261123140042_add_auth_sessions_and_goal_owner` was restore-rehearsed on native PostgreSQL 17 and applied through Prisma after freshness/permission/drift checks. User -> AuthSession -> RefreshToken tables and nullable indexed Goal.userId now exist; the runtime client was regenerated and read-only smoke checked. Credential/session tables have RLS enabled without public policies, preventing ordinary non-owner API roles from accessing rows despite possible default grants; the owning backend database role can manage them. Row ownership checks in backend services remain necessary because the owner bypasses RLS. No accounts/sessions were created and no goals were reassigned. The historical proposal is no longer a deployment source. Auth endpoints/session logic and owned goal creation/list/detail are implemented; verified legacy ownership backfill remains pending. Migration 20261124120000_protect_goal_data_api enables Goal RLS without public policies so ordinary Data API roles cannot bypass backend ownership. It preserves existing rows and ownership; the owner/backend role still bypasses RLS and must filter every query.
+M2 database foundations are active as of 23 November 2026. Migration `20261123140042_add_auth_sessions_and_goal_owner` was restore-rehearsed on native PostgreSQL 17 and applied through Prisma after freshness/permission/drift checks. User -> AuthSession -> RefreshToken tables and nullable indexed Goal.userId now exist; the runtime client was regenerated and read-only smoke checked. Credential/session tables have RLS enabled without public policies, preventing ordinary non-owner API roles from accessing rows despite possible default grants; the owning backend database role can manage them. Row ownership checks in backend services remain necessary because the owner bypasses RLS. No accounts/sessions were created and no goals were reassigned. The historical proposal is no longer a deployment source. Auth endpoints/session logic and owned goal creation/list/detail are implemented; verified legacy backfill and required ownership are complete. Migration 20261124120000_protect_goal_data_api enables Goal RLS without public policies so ordinary Data API roles cannot bypass backend ownership. It preserves existing rows and ownership; the owner/backend role still bypasses RLS and must filter every query.
 
 Keep the existing Node, Express 5, PostgreSQL/Supabase and Prisma 7 stack. Use incremental layers:
 
@@ -50,7 +50,7 @@ React/TypeScript/Vite UI
                                -> private document storage (when required)
 ```
 
-Zod validates goal/signup inputs and bcrypt hashes registration passwords at cost 12. A separate signup limiter precedes parsing/hashing. JWT/session flow is implemented; the frontend remains planned. Registration creates no session. Existing Goal ownership remains nullable until verified account linkage/backfill. Never assign old records to the first signup. Unit/API tests replace persistence; the separately gated local PostgreSQL integration test verifies actual Prisma writes and duplicate races without touching Supabase.
+Zod validates goal/signup inputs and bcrypt hashes registration passwords at cost 12. A separate signup limiter precedes parsing/hashing. JWT/session flow is implemented; the frontend remains planned. Registration creates no session. Goal.userId is now required after verified account linkage/backfill and a restore-rehearsed NOT NULL migration. Never assign old records to the first signup. Unit/API tests replace persistence; the separately gated local PostgreSQL integration test verifies actual Prisma writes and duplicate races without touching Supabase.
 
 Add relational models only as their feature is implemented. User/Profile anchor skills, projects, goals and later roadmaps/applications. Multi-record writes should use transactions. Index ownership and proven query patterns; paginate lists. Document cascade/delete behavior before migrations.
 
@@ -62,7 +62,7 @@ Keep AI provider calls behind a service interface with prompt templates, validat
 
 ## Implemented goal ownership
 
-All /api/goals requests pass the shared JWT/session authentication middleware. Creation derives userId from res.locals.auth, never the body. List/detail queries include that userId; detail combines id + userId in one query and returns the same 404 for another owner, NULL ownership or absence. Lists use id-ordered keyset pagination with bounded take. Unassigned legacy rows stay invisible; no backfill/owner reassignment occurs through normal routes. New Goal RLS denies ordinary direct Data API roles, even if table grants exist. Native two-user/API and direct-role tests complement embedded migration refusal/preservation tests.
+All /api/goals requests pass the shared JWT/session authentication middleware. Creation derives userId from res.locals.auth, never the body. List/detail queries include that userId; detail combines id + userId in one query and returns the same 404 for another owner, NULL ownership or absence. Lists use id-ordered keyset pagination with bounded take. The nullable migration stage is finished: verified legacy records are linked and the database rejects NULL owners. No backfill/reassignment occurs through normal routes. New Goal RLS denies ordinary direct Data API roles, even if table grants exist. Native two-user/API and direct-role tests complement embedded migration refusal/preservation tests.
 
 ## Implemented session request flow
 
@@ -76,6 +76,12 @@ POST /api/auth/logout + cookies/CSRF -> revoke session -> clear cookies
 ```
 
 `routes/auth.routes.ts` owns cookies/CSRF and HTTP contracts. `services/auth.service.ts` owns credential checks and database session operations. `utils/auth-tokens.ts` owns strict jose JWT signing/verification and refresh generation/hashing. `middleware/authentication.middleware.ts` verifies bearer authentication before protected controllers. Refresh replay returns a failure after committing revocation; throwing inside that transaction would roll revocation back. Concurrent refreshes are intentionally treated as reuse, so the frontend must coordinate a single refresh at a time across tabs. Session expiry is absolute and every protected request checks revocation in PostgreSQL. Login/session verification uses fictional local databases, never Supabase user records.
+
+## Password-change transaction and login race
+
+POST /api/auth/change-password requires Bearer/session authentication plus matching cookie binding/CSRF. Current password verification and new bcrypt hashing run before taking the User row lock. Inside the transaction, the service rechecks the stored hash and calling session, updates the hash and revokes all unrevoked sessions for that user. Any failure rolls back both changes. Cookies clear only on successful commit. Every subsequent protected request rechecks its database session; other accounts retain their sessions.
+
+Login also locks this User row and rechecks its originally verified hash before nested session creation. If password change wins, the old hash no longer matches and that login cannot create a late active session. If login wins, its session is included in the subsequent revocation. Refresh locks the session row, and a completed password change still revokes any refresh result. This preserves the existing in-flight-request limitation while preventing a lasting old-password session.
 
 ## Engineering tradeoffs
 

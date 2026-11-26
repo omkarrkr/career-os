@@ -1,6 +1,6 @@
 # CareerOS API contracts
 
-Updated 24 November 2026. Development base URL: http://localhost:3000. Registration, login, session refresh/logout and protected real-user profile are implemented. Goal creation/list/detail are ownership-scoped; legacy backfill and update/delete are pending; do not expose this as a finished multi-user API.
+Updated 26 November 2026. Development base URL: http://localhost:3000. Registration, login, session refresh/logout and protected real-user profile are implemented. Goal creation/list/detail are ownership-scoped, database ownership is required, and password change revokes sessions; update/delete remain pending; do not expose this as a finished multi-user API.
 
 ## POST /api/goals
 
@@ -87,7 +87,21 @@ Serialize refreshes across the frontend, including tabs. Two requests with the s
 
 Production cookies are `__Host-careeros_refresh`, `__Host-careeros_binding`, and `__Host-careeros_csrf`: Secure, HttpOnly, SameSite=Lax, Path=/, without Domain. Development uses `careeros_` names without Secure for local HTTP. This expects same-site frontend/backend deployment; different-site hosting needs a cookie/CSRF review. CORS_ORIGINS must include even a same-origin UI's origin for unsafe auth requests. CLI auth writes require a configured Origin/Referer plus cookies and CSRF.
 
-Login allows 10 attempts/IP/15 minutes; /api/auth also has a 60-request/IP/15-minute budget, and the API-wide limit applies. Failed CSRF/validation attempts count. No schema change, real-account creation or legacy-goal claiming was needed. Password change, legacy ownership backfill, verification/recovery and session-history cleanup remain later work.
+Login allows 10 attempts/IP/15 minutes; /api/auth also has a 60-request/IP/15-minute budget, and the API-wide limit applies. Failed CSRF/validation attempts count. No schema change, real-account creation or legacy-goal claiming was needed. Legacy backfill and required ownership are complete. Password change is described below. Verification/recovery and session-history cleanup remain later work.
+
+## POST /api/auth/change-password
+
+Requires a valid Bearer access token, active session, approved Origin/Referer, application/json, session cookies and X-CSRF-Token. The binding cookie must match the Bearer token’s session ID; mixing browser sessions returns 403 `Session binding mismatch`. Send `{currentPassword,newPassword}`. Extra fields cannot select a different account. Both passwords retain exact characters and use signup’s 15-code-point/72-UTF-8-byte boundaries; newPassword must differ.
+
+Invalid structure/policy returns 400 `Invalid password change data`. Incorrect current password returns 400 `Current password is incorrect`; hash/session state is unchanged. Missing/expired/revoked authentication returns 401; origin/CSRF failures return 403. A dedicated five-attempt/IP/15-minute limit applies before parsing, in addition to auth/API budgets; exhaustion returns 429 `Too many password change attempts; try again later`.
+
+Success returns 200 `{message:"Password changed successfully; sign in again"}`, clears all three auth cookies and uses no-store. A transaction saves a new salted bcrypt cost-12 hash and revokes ALL existing sessions for that account, including the calling session; other accounts are untouched. No password/hash/token is returned. The frontend must discard in-memory access/CSRF state and ask for sign-in. This changes a known password; it is not a forgotten-password/reset endpoint.
+
+Login and password change lock the same User row. Login rechecks the hash after locking before creating a session, preventing an old-password login from creating a late session after the change. Password change rechecks current hash and calling session under this lock, then updates hash and revokes sessions atomically. A concurrent refresh either fails or produces a token whose session is revoked by the completed password change. Already-authorized in-flight requests may finish. Unexpected failure rolls the transaction back and returns safe 500 without clearing cookies or falsely reporting success.
+
+## Mandatory database ownership
+
+After verified account linkage/backfill, migration 20261126190000_require_goal_owner makes Goal.userId NOT NULL while retaining its foreign key, index and RLS. It refuses to run when NULL owners remain and never assigns an owner automatically. Missing/NULL owners are rejected at the database layer as well as by application logic. Existing goal/account/session values were preserved through a fresh backup/restore and exact SQL rehearsal. Historical migration tests still exercise the earlier nullable transition; current integration fixtures use explicit fictional owners.
 
 ## Response convention
 

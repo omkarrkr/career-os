@@ -1,6 +1,6 @@
 # CareerOS ordered development roadmap
 
-Updated 24 November 2026. Baseline: repository audit dated 17 November 2026. The owner has authorized continuing development in small, explained, verified steps and making Git checkpoints at stable milestones. Each milestone below is split into manageable tasks; completing the entire long-term backlog is not required for the first release.
+Updated 26 November 2026. Baseline: repository audit dated 17 November 2026. The owner has authorized continuing development in small, explained, verified steps and making Git checkpoints at stable milestones. Each milestone below is split into manageable tasks; completing the entire long-term backlog is not required for the first release.
 
 ## Release goal and scope
 
@@ -16,7 +16,7 @@ Keep Node/Express/TypeScript, PostgreSQL/Supabase and Prisma. Build the UI with 
 | --- | --- | --- |
 | M0. Foundation — verified | Compiler boundary/build, read-only database connectivity, migration status, compiled startup, safe setup and exact Prisma pins verified on 22 November 2026. Existing data preserved. | `6720344` build repair; foundation setup checkpoint follows |
 | M1. API safety — verified | Validated goals, safe errors/JSON 404 and placeholders, checked startup settings/shutdown, Helmet, exact origin policy, bounded API requests and tests verified on 22 November 2026. Authentication is still pending. | Stable step checkpoints; HTTP safeguard checkpoint completes scoped M1 |
-| M2. Identity and ownership | Real registration/login/logout, password hashing, session strategy, protected routes, explicit public user fields; reviewed non-destructive migration for existing goals; cross-user denial tests. | `feat: add authentication and resource ownership` |
+| M2. Identity and ownership — verified | Real registration/login/logout, password hashing, session strategy, protected routes, explicit public user fields; reviewed non-destructive migration for existing goals; cross-user denial tests. | `feat: add authentication and resource ownership` |
 | M3. First usable application | React shell, auth screens, accessible reusable UI, career profile APIs/forms; persisted data survives reload; deployment preview with appropriate access limits. | `feat: connect career profile frontend and backend` |
 | M4. Career evidence and execution | Owned skills/projects and full goal CRUD; subtasks, deadlines, priorities, bounded lists, project-skill links; working UI and ownership tests. Add certifications/experience only to the depth needed for this release. | `feat: connect skills projects and goal tracking` |
 | M5. Explainable role planning | Start with one maintained target-role template; label requirement sources and self-reported proficiency; show missing requirements/evidence; save milestones and roadmap progress; test deterministic calculations. | `feat: add explainable role gap planning` |
@@ -86,14 +86,16 @@ Acceptance: malformed requests return safe actionable errors; valid goal behavio
 ## Phase 2: authentication and users
 
 - [x] Document proposed User/session/token design and staged ownership migration (23 November 2026; AUTH_DESIGN.md). No migration prepared/applied yet.
-- [ ] Establish backup readiness and capture legacy record metadata using read-only access; verify destination account before backfill.
+- [x] Establish scoped backup/restore readiness, capture legacy metadata and verify destination account before backfill.
 - [x] Draft/review additive schema/SQL outside active migration path; validate with Prisma and embedded PostgreSQL preservation/constraint/rollback tests.
 - [x] Verify scoped application backup/restore, native PostgreSQL staging, permissions/freshness/drift; promote/apply the additive migration and verify preservation. Initial migration remains unchanged.
 - [x] Implement validated registration, bcrypt hashing, safe public fields, unique-email race handling and signup throttling.
 - [x] Implement login and verify credentials without exposing account/password details.
 - [x] Implement JWT/session expiry, refresh rotation/revocation, logout and protected profile. Goal ownership remains below.
 - [x] Protect goal creation/list/detail with session-derived ownership; close ordinary direct Goal Data API access.
-- [ ] Verify actual owner account, backfill confirmed legacy goals, enforce required ownership and implement password change.
+- [x] Verify actual owner account and backfill only confirmed legacy goals.
+- [x] Enforce required ownership after zero-NULL checks and a restore-rehearsed migration.
+- [x] Implement current-password-verified password change with atomic all-session revocation and login-race protection.
 - [x] Test duplicate registration, invalid/expired/revoked sessions and cross-user goal create/read isolation. Future update/delete ownership tests remain.
 
 M2 design checkpoint (23 November): owner confirms all existing Supabase goals are theirs. Plan User/AuthSession/RefreshToken plus initially nullable indexed Goal.userId; do not auto-assign to first signup. Propose short-lived JWT access in memory and rotated HttpOnly refresh cookies with stored hashes/history, active-session checks for revocation and CSRF protection before cookie auth. Retain bcrypt per original requirement while documenting Argon2id as OWASP's modern preference and bcrypt's byte limit/work-factor constraints. Next steps are additive SQL preparation, isolated verification and backup readiness; no live connection, schema changes or row updates occurred in this documentation step. See AUTH_DESIGN.md.
@@ -108,6 +110,8 @@ M2 login/session step (24 November): credential login, 15-minute access JWTs cap
 
 
 M2 owned-goal step (24 November): protected create/list/detail, server-derived owner, bounded cursor pagination and consistent 404 denial implemented. Goal RLS guard closes ordinary direct Data API access and refuses unexpected preexisting policies. Fresh scoped backup/restore and exact native SQL rehearsal precede deployment; existing goal fields/NULL owner are preserved. Typecheck/build, 80 default tests and 22 native integration tests pass (including parent counts). Actual account verification/backfill, required ownership and password change remain M2 work; update/delete and further goal management remain Phase 4 work.
+
+M2 completion (26 November): verified legacy account linkage precedes migration 20261126190000_require_goal_owner, which refuses unresolved rows and makes Goal.userId required without changing data. Authenticated password change verifies the current password, hashes the new value and revokes all own sessions atomically. Login rechecks its credential hash under the same account lock, preventing late old-password sessions. CSRF/binding checks and a five-attempt limit protect the route. Typecheck/build/schema validation, 83 default tests and 30 native integration tests pass (parent counts included), including rollback and concurrency cases. Fresh scoped backup/restore and live preservation/checksum/drift checks pass; real credentials/sessions remain unchanged by verification. Scoped M2 is complete; broader public-launch verification/recovery/abuse controls remain later work. Editing/deletion remain M4. Next is M3 career profile and the first frontend.
 
 Acceptance: two users cannot access each other's resources; existing data is preserved with explicit legitimate ownership decisions.
 

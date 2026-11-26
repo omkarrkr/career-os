@@ -17,8 +17,8 @@ model Goal {
   status      String   @default("ACTIVE")
   targetDate  DateTime?
   createdAt   DateTime @default(now())
-  userId      Int?
-  user        User?    @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  userId      Int
+  user        User     @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@index([userId])
 }

@@ -14,7 +14,7 @@ CareerOS is a full-stack AI platform that helps engineering students with:
 
 ## Current Status
 
-The backend foundation is verified. The frontend (React + TypeScript + Tailwind CSS) is **not yet built** — this repo currently contains only the Node.js/Express backend. Goal creation validates input and registration creates users with bcrypt-hashed passwords and public-field-only responses. Login, refresh rotation, logout and a protected real-user profile are implemented. Goal creation/list/detail now require a valid session and restrict access to the signed-in owner. Existing unassigned goals stay hidden pending verified account linkage; this is not a production-ready multi-user API.
+The backend foundation is verified. The frontend (React + TypeScript + Tailwind CSS) is **not yet built** — this repo currently contains only the Node.js/Express backend. Goal creation validates input and registration creates users with bcrypt-hashed passwords and public-field-only responses. Login, refresh rotation, logout and a protected real-user profile are implemented. Goal creation/list/detail now require a valid session and restrict access to the signed-in owner. Verified legacy linkage and mandatory database ownership are complete. Password changes revoke all sessions for that account; this is not a production-ready multi-user API.
 
 The first release connects a target role, skill/project evidence, explained gaps, goals, a roadmap and a reviewed AI weekly plan. The features above describe the longer-term vision. See [the active milestones](docs/ROADMAP.md), [architecture](docs/ARCHITECTURE.md) and [historical audit](docs/PROJECT_AUDIT.md).
 
@@ -82,11 +82,11 @@ model Goal {
   status      String   @default("ACTIVE")
   targetDate  DateTime?
   createdAt   DateTime @default(now())
-  userId      Int?
+  userId      Int
 }
 ```
 
-This Goal field excerpt omits relation/index declarations; see the active Prisma schema for the full definition. User, AuthSession and RefreshToken support registration and login/session logic. Legacy Goal ownership remains nullable; new writes derive userId from the session and reads filter by owner. The Goal Data API is restricted with RLS; existing goals remain unassigned until explicit owner verification/backfill.
+This Goal field excerpt omits relation/index declarations; see the active Prisma schema for the full definition. User, AuthSession and RefreshToken support registration and login/session logic. Goal ownership is required after verified legacy backfill. New writes derive userId from the session and reads filter by owner. The database rejects NULL owners and direct ordinary-role Goal access is restricted with RLS.
 
 ## API Endpoints
 
@@ -102,6 +102,7 @@ This Goal field excerpt omits relation/index declarations; see the active Prisma
 | POST   | `/api/auth/login`      | Verify credentials and start a session |
 | POST   | `/api/auth/refresh`    | Rotate refresh cookie and issue access token |
 | POST   | `/api/auth/logout`     | Revoke current session and clear auth cookies |
+| POST   | `/api/auth/change-password` | Verify current password, save new hash and revoke all own sessions |
 
 ## Getting Started
 
@@ -169,7 +170,7 @@ From `backend`, run `npm.cmd test`. The Node test runner uses tsx to import Type
 
 Migration `20261123140042_add_auth_sessions_and_goal_owner` adds account/session tables and nullable Goal.userId, with indexes, restrictive foreign keys and RLS on the three credential/session tables. It was rehearsed on an isolated native PostgreSQL 17 restore, then applied on 23 November 2026. Existing goal values and original migration history were preserved; no ownership backfill or account creation occurred during migration. Registration now creates accounts but does not sign them in or claim old goals.
 
-The active schema/migrations are authoritative; [the proposal folder](backend/prisma/proposals/auth/README.md) is now historical reference. `npm.cmd run test:migration:auth` tests the committed migration against fictional old goals in PGlite, including preservation, uniqueness, references, transaction rollback and ordinary-role RLS denial. The default suite currently reports 80 passing tests. Keep backup/recovery artifacts local and ignored. For another environment, review pending SQL and deployment readiness before applying committed migrations with `prisma migrate deploy --config prisma7.config.ts`; regenerate the runtime client after its target schema is compatible. Do not replay the archived proposal SQL or edit applied migration history.
+The active schema/migrations are authoritative; [the proposal folder](backend/prisma/proposals/auth/README.md) is now historical reference. `npm.cmd run test:migration:auth` tests the committed migration against fictional old goals in PGlite, including preservation, uniqueness, references, transaction rollback and ordinary-role RLS denial. The default suite currently reports 83 passing tests. Keep backup/recovery artifacts local and ignored. For another environment, review pending SQL and deployment readiness before applying committed migrations with `prisma migrate deploy --config prisma7.config.ts`; regenerate the runtime client after its target schema is compatible. Do not replay the archived proposal SQL or edit applied migration history.
 
 ### Registration
 
@@ -179,7 +180,7 @@ POST /api/users/register accepts name, email and password; see [the API contract
 
 ### Login and sessions
 
-See [the authentication API flow](docs/API.md#browser-authentication-and-sessions). Access JWTs last up to 15 minutes and are checked against a database session on protected requests. HttpOnly refresh cookies rotate on use; consumed-token reuse revokes the session. Sessions expire absolutely after seven days. Logout revokes the current session and clears cookies. The profile route now returns only the authenticated account’s public fields. Owned goal creation/list/detail are implemented. Verified legacy backfill, update/delete and password change remain pending.
+See [the authentication API flow](docs/API.md#browser-authentication-and-sessions). Access JWTs last up to 15 minutes and are checked against a database session on protected requests. HttpOnly refresh cookies rotate on use; consumed-token reuse revokes the session. Sessions expire absolutely after seven days. Logout revokes the current session and clears cookies. The profile route now returns only the authenticated account’s public fields. Owned goal creation/list/detail are implemented. Verified legacy backfill, mandatory ownership and password change are implemented. Update/delete remain pending.
 
 Set both auth secrets in your private backend/.env using independent crypto.randomBytes(32) values encoded as hex; placeholders in .env.example are intentionally invalid. Never use the public test-only keys from tests/setup-env.mjs for a real environment. Keep access/CSRF tokens in memory in the future UI, and serialize refresh requests across tabs. Production requires HTTPS and same-site frontend/backend hosting under the current cookie policy.
 
@@ -192,6 +193,14 @@ Goal routes require a valid Bearer token and active session. POST assigns owners
 Migration 20261124120000_protect_goal_data_api enables Goal RLS without public policies, preventing ordinary direct Supabase API access from bypassing the backend. It was applied after a fresh scoped backup/restore proof and native PostgreSQL rehearsal; goal rows and unassigned ownership were preserved. Backend owner/admin roles still need application ownership checks.
 
 `npm.cmd run test:integration:goals` requires a fresh loopback database named careeros_test_goals_<suffix> through TEST_DATABASE_URL, refuses query overrides/nonempty schemas, and verifies two-user isolation, spoofed ownership, legacy preservation, pagination, revocation and direct-role RLS denial. Nine reported tests pass including the parent; registration/session suites report five/eight. No automated fixtures are written to Supabase.
+
+### Password change and required ownership
+
+POST /api/auth/change-password requires Bearer authentication, matching session cookies/CSRF and `{currentPassword,newPassword}`. On success it saves a new bcrypt hash, revokes every existing session for that account, clears auth cookies and requires sign-in again. Incorrect current passwords/invalid input leave account/session state unchanged. Password change and login serialize on the User row to prevent an old-password login creating a late session. Dedicated throttling allows five attempts/IP/15 minutes. See [API contracts](docs/API.md#post-apiauthchange-password).
+
+Migration 20261126190000_require_goal_owner makes Goal.userId required after explicit legacy identity verification/backfill. It refuses unresolved NULL owners and does not modify existing row values. Applied after a fresh scoped application backup was restored and the exact SQL rehearsed; credential/session fingerprints and goal values remain unchanged. Never assign records automatically to make this migration pass.
+
+`npm.cmd run test:integration:password` requires a fresh local database named careeros_test_password_<suffix> using TEST_DATABASE_URL and refuses non-loopback targets, URL query overrides and nonempty schemas. Eight reported tests cover CSRF/session binding, current/new password validation, all-session revocation, another account staying signed in, transaction rollback, concurrent changes/refresh and late old-password login. All four native suites report 30 tests including parents; the default suite reports 83. No real password was changed for verification.
 
 ## Environment Variables
 

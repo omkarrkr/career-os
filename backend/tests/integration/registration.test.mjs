@@ -26,7 +26,8 @@ test("registration with real Prisma and an isolated PostgreSQL database", { skip
         const migrations = (await readdir(new URL("../../prisma/migrations/", import.meta.url), { withFileTypes: true }))
             .filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort();
         for (const name of migrations) await database.query(await readFile(new URL(`../../prisma/migrations/${name}/migration.sql`, import.meta.url), "utf8"));
-        await database.query(`INSERT INTO "Goal" (title,category) VALUES ('Synthetic legacy goal','Development')`);
+        const legacyOwner = (await database.query(`INSERT INTO "User" (name,email,"passwordHash","updatedAt") VALUES ('Legacy fixture owner','legacy@example.test','not-a-login-hash',NOW()) RETURNING id`)).rows[0].id;
+        await database.query(`INSERT INTO "Goal" (title,category,"userId") VALUES ('Synthetic linked legacy goal','Development',$1)`, [legacyOwner]);
         const { default: app } = await import("../../src/app.ts");
         ({ default: prisma } = await import("../../src/config/prisma.ts"));
         server = app.listen(0, "127.0.0.1");
@@ -62,7 +63,7 @@ test("registration with real Prisma and an isolated PostgreSQL database", { skip
             assert.equal((await database.query(`SELECT COUNT(*)::integer AS count FROM "User" WHERE email='race@example.test'`)).rows[0].count, 1);
         });
         await t.test("registration neither claims legacy goals nor creates sessions", async () => {
-            assert.equal((await database.query('SELECT "userId" FROM "Goal"')).rows[0].userId, null);
+            assert.equal((await database.query('SELECT "userId" FROM "Goal"')).rows[0].userId, legacyOwner);
             for (const table of ["AuthSession", "RefreshToken"]) assert.equal((await database.query(`SELECT COUNT(*)::integer AS count FROM "${table}"`)).rows[0].count, 0);
         });
     } finally {

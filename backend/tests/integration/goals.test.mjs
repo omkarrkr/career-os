@@ -21,8 +21,9 @@ test("goal ownership and direct-role isolation with native PostgreSQL", { skip: 
         const migrations = (await readdir(new URL("../../prisma/migrations/", import.meta.url), { withFileTypes: true }))
             .filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort();
         for (const name of migrations) await db.query(await readFile(new URL(`../../prisma/migrations/${name}/migration.sql`, import.meta.url), "utf8"));
-        const legacy = (await db.query(`INSERT INTO "Goal" (title,category) VALUES ('Unassigned private fixture','Development') RETURNING *`)).rows[0];
         const users = (await db.query(`INSERT INTO "User" (name,email,"passwordHash","updatedAt") VALUES ('A','a@example.test','unused-fixture',NOW()), ('B','b@example.test','unused-fixture',NOW()) RETURNING id`)).rows;
+        const legacyOwner = (await db.query(`INSERT INTO "User" (name,email,"passwordHash","updatedAt") VALUES ('Legacy','legacy@example.test','unused-fixture',NOW()) RETURNING id`)).rows[0].id;
+        const legacy = (await db.query(`INSERT INTO "Goal" (title,category,"userId") VALUES ('Linked legacy fixture','Development',$1) RETURNING *`, [legacyOwner])).rows[0];
         const { tokenTools } = await import("../../src/utils/auth-tokens.ts");
         const tokens = [];
         const sessions = [];
@@ -60,7 +61,7 @@ test("goal ownership and direct-role isolation with native PostgreSQL", { skip: 
             assert.equal(a.userId, users[0].id); assert.equal(b.userId, users[1].id);
             assert.equal(a.status, "ACTIVE"); assert.notEqual(a.id, 999);
         });
-        await t.test("lists contain only the caller's goals, excluding NULL-owned rows and spoofed filters", async () => {
+        await t.test("lists contain only the caller's goals, excluding another legacy owner and spoofed filters", async () => {
             for (const [index, goal] of [[0, a], [1, b]]) {
                 const response = await request(`?userId=${users[1 - index].id}`, tokens[index]);
                 assert.equal(response.status, 200);
@@ -106,7 +107,7 @@ test("goal ownership and direct-role isolation with native PostgreSQL", { skip: 
             await db.query(`SET ROLE "${role}"`);
             try {
                 assert.equal((await db.query('SELECT * FROM "Goal"')).rowCount, 0);
-                await assert.rejects(db.query(`INSERT INTO "Goal" (title,category) VALUES ('Bypass denied','Development')`), { code: "42501" });
+                await assert.rejects(db.query(`INSERT INTO "Goal" (title,category,"userId") VALUES ('Bypass denied','Development',$1)`, [users[0].id]), { code: "42501" });
             } finally { await db.query("RESET ROLE"); }
             assert.deepEqual((await db.query('SELECT * FROM "Goal" WHERE id=$1', [legacy.id])).rows[0], legacy);
         });

@@ -1,6 +1,6 @@
 # M2: accounts, sessions and safe goal ownership
 
-Design date: 23 November 2026; registration and login/sessions verified 24 November. Database foundation migration `20261123140042_add_auth_sessions_and_goal_owner` is applied and the client regenerated. Registration, login, refresh/logout, CSRF and protected profile are implemented; verified legacy ownership backfill and password change remain pending. The proposal folder is historical reference; the active schema and migration history are authoritative.
+Design date: 23 November 2026; mandatory ownership and password change verified 26 November. Database foundation migration `20261123140042_add_auth_sessions_and_goal_owner` is applied and the client regenerated. Registration, login, refresh/logout, CSRF and protected profile are implemented; verified legacy backfill, required ownership and password change are now complete. The proposal folder is historical reference; the active schema and migration history are authoritative.
 
 ## Scope and confirmed facts
 
@@ -54,7 +54,7 @@ erDiagram
     AuthSession ||--o{ RefreshToken : rotates
 ```
 
-Goal ownership is temporarily optional during migration. Intended fields, not final Prisma code:
+The original expand-stage design allowed temporary NULL ownership. Backfill is now verified and the current schema requires Goal.userId. Historical intended fields below describe the staged transition:
 
 | Model | Planned fields and rules |
 | --- | --- |
@@ -91,7 +91,7 @@ Use three stages: expand -> backfill -> enforce. No reset, table replacement, bl
 - After all intended rows are assigned and a read-only check proves zero NULL owners, review a second migration that makes userId required. Do not run it while unresolved legacy rows remain.
 - Verify anonymous requests are denied and User A cannot read/update/delete User B's goals. Use a safe 404 for inaccessible resource lookups to avoid disclosing another user's record existence.
 
-The additive apply stage is now complete and verified. Backfill and required ownership remain separate future steps after the actual owner account is created and verified.
+The expand, verified-identity backfill and required-ownership stages are complete. The final constraint refuses NULL owners and preserves goal values, foreign keys and RLS. Private identity/backfill artifacts are not published.
 
 ## Incremental implementation order and API plan
 
@@ -120,3 +120,6 @@ Typecheck/build, 79 default tests and eight native PostgreSQL session integratio
 
 
 Goal ownership step (24 November): all goal routes require bearer/session authentication; creation derives userId from the session, list/detail queries always filter by owner, foreign/legacy/missing details share 404, and cursor pagination is bounded. Migration 20261124120000_protect_goal_data_api enables Goal RLS with no public policies and refuses unexpected existing policies. A fresh private public-schema/data backup was restore-verified and the exact SQL rehearsed on native PostgreSQL before deployment. Existing goal fields and NULL ownership are preserved. The owning backend role still bypasses RLS and must enforce account scope. Verification: 80 default tests and 22 native integration tests (nine goal, five registration, eight session; parent counts included). No fictional test accounts/goals are created remotely. Actual owner verification/backfill, required ownership, password change and future goal update/delete remain pending.
+
+
+26 November completion: explicit owner verification/backfill completed before 20261126190000_require_goal_owner. The migration refuses NULL owners and changes only nullability; backup restore, native rehearsal, data/credential/session preservation and migration checks pass. Password change verifies current credentials, applies the existing exact password policy, locks/rechecks User and calling session, updates the bcrypt hash and revokes all own sessions in one transaction. Login locks/rechecks the same User row to close old-password session creation races. Refresh races cannot retain an active session after the password change. Cookies clear on success; failures do not falsely report success. Default suite83 and native suites30 pass, including negative input, CSRF/binding, isolation, rollback, concurrent changes/refresh and ordered login race checks. Real password/session rows were not modified by these tests. See API.md for request/status contracts. OWASP authentication/session guidance informed current-password reauthentication and session invalidation; verification/recovery, compromised-password screening, shared abuse controls and retention still need public-launch work.
