@@ -29,7 +29,7 @@ export const configureHttpSecurity = (app: Express, settings: SecuritySettings) 
 
     app.use(cors<Request>((req, callback) => callback(null, {
         origin: settings.CORS_ORIGINS,
-        methods: ["GET", "POST"],
+        methods: ["GET", "POST", "PATCH"],
         allowedHeaders: ["Content-Type", "Authorization", "X-CSRF-Token"],
         exposedHeaders: ["RateLimit", "RateLimit-Policy", "Retry-After"],
         credentials: req.path === "/api/auth" || req.path.startsWith("/api/auth/"),

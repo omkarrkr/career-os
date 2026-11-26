@@ -32,6 +32,21 @@ model User {
   updatedAt    DateTime      @updatedAt
   goals        Goal[]
   sessions     AuthSession[]
+  careerProfile CareerProfile?
+}
+
+model CareerProfile {
+  userId              Int       @id
+  user                User      @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  institution         String?   @db.VarChar(200)
+  degree              String?   @db.VarChar(100)
+  graduationYear      Int?
+  targetRole          String?   @db.VarChar(100)
+  weeklyLearningHours Int?
+  interests           String[]  @default([])
+  bio                 String?   @db.VarChar(1000)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 }
 
 model AuthSession {

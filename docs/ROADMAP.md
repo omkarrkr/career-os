@@ -1,6 +1,6 @@
 # CareerOS ordered development roadmap
 
-Updated 26 November 2026. Baseline: repository audit dated 17 November 2026. The owner has authorized continuing development in small, explained, verified steps and making Git checkpoints at stable milestones. Each milestone below is split into manageable tasks; completing the entire long-term backlog is not required for the first release.
+Updated 27 November 2026. Baseline: repository audit dated 17 November 2026. The owner has authorized continuing development in small, explained, verified steps and making Git checkpoints at stable milestones. Each milestone below is split into manageable tasks; completing the entire long-term backlog is not required for the first release.
 
 ## Release goal and scope
 
@@ -117,10 +117,13 @@ Acceptance: two users cannot access each other's resources; existing data is pre
 
 ## Phase 3: career profile and first frontend
 
-- [ ] Add profile fields and profile/dashboard APIs with documented completeness rules.
+- [x] Add private career-profile GET/PATCH APIs, bounded fields, one-to-one storage and documented five-field completion checklist.
+- [ ] Add real dashboard summaries as the frontend workflow needs them.
 - [ ] Scaffold React/TypeScript/Vite/Tailwind and routing incrementally.
 - [ ] Build authentication, dashboard and profile pages with API integration.
 - [ ] Add reusable accessible forms, loading/error/empty states and responsive navigation.
+
+M3 backend step (27 November): CareerProfile has one unique owner, partial-save validation, explicit null/empty-list clearing and owner-scoped GET/PATCH. Completion lists five core fields and makes no readiness claims. The additive empty-table migration passed fresh scoped backup/restore and native rehearsal; prior goals/account/session values were preserved. RLS denies ordinary direct profile access. Typecheck/build/schema validation, 86 default tests and 38 native integration tests pass (including parents), including two-user isolation, concurrent first saves and application-restart persistence. M3 remains in progress: frontend forms, auth screens, real dashboard, accessibility and preview are not complete.
 
 Acceptance: an authenticated user edits their profile and sees persisted real data after reload. No fabricated dashboard statistics.
 

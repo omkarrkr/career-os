@@ -1,6 +1,6 @@
 # CareerOS architecture
 
-Audited 17 November 2026; authentication/required ownership updated 26 November 2026. This document separates implemented behavior from intended design.
+Audited 17 November 2026; career-profile backend updated 27 November 2026. This document separates implemented behavior from intended design.
 
 ## Current system
 
@@ -23,7 +23,7 @@ After startup, SIGINT/SIGTERM handlers request shutdown once. HTTP stops accepti
 - Controllers select request fields and form HTTP responses.
 - Services contain application operations. Goal, user and auth services persist through Prisma.
 - `config/prisma.ts` exports one Prisma client with `PrismaPg` and `DATABASE_URL`.
-- `schema.prisma` describes Goal, User, AuthSession and RefreshToken. SQL migrations describe database changes over time.
+- `schema.prisma` describes Goal, User, AuthSession, RefreshToken and CareerProfile. SQL migrations describe database changes over time.
 - The generated Prisma client supplies database types and query methods; it is ignored and must be generated locally.
 
 The goal path is `POST /api/goals -> authentication -> createGoalController -> Zod schema validation -> createGoal -> prisma.goal.create -> PostgreSQL`. Invalid input stops at the controller with a 400. The schema trims required strings and selects only supported fields. A JSON 404 handler follows routes; final error middleware follows that. Async failures reach the shared handler through Express 5, returning a generic 500 and fixed safe log event. Profile requires authentication and selects the signed-in user’s public fields. Registration follows schema validation -> user service -> asynchronous bcrypt hash -> Prisma create with public-field selection; the controller serializes public fields again. A deliberate ApiError maps the known email uniqueness violation to 409 without exposing adapter diagnostics. No frontend or AI layer exists.
@@ -82,6 +82,12 @@ POST /api/auth/logout + cookies/CSRF -> revoke session -> clear cookies
 POST /api/auth/change-password requires Bearer/session authentication plus matching cookie binding/CSRF. Current password verification and new bcrypt hashing run before taking the User row lock. Inside the transaction, the service rechecks the stored hash and calling session, updates the hash and revokes all unrevoked sessions for that user. Any failure rolls back both changes. Cookies clear only on successful commit. Every subsequent protected request rechecks its database session; other accounts retain their sessions.
 
 Login also locks this User row and rechecks its originally verified hash before nested session creation. If password change wins, the old hash no longer matches and that login cannot create a late active session. If login wins, its session is included in the subsequent revocation. Refresh locks the session row, and a completed password change still revokes any refresh result. This preserves the existing in-flight-request limitation while preventing a lasting old-password session.
+
+## Career-profile read and partial-save flow
+
+GET/PATCH /api/users/career-profile -> shared Bearer/session authentication -> career-profile controller -> Zod partial-field validation -> service with session-derived userId -> Prisma CareerProfile -> PostgreSQL. Existing account identity responses stay separate. Profile reads use findUnique on the owner key and do not create rows. Saves use a scalar upsert with an explicit field allowlist, omitting undefined fields while preserving explicit null. The native concurrency test verifies one row and both disjoint updates survive simultaneous first saves. Same-field concurrent writes are last-write-wins.
+
+User has zero or one CareerProfile; userId is the profile primary key and restrictive foreign key. Migration 20261127120000_add_career_profile adds this empty table without modifying existing rows and enables RLS without public policies. Backend queries always supply authenticated owner IDs because the table owner bypasses RLS. Profiles have bounded text/numeric/interests fields; completion is derived from five documented core fields rather than stored as a mutable score. Optional interests/bio do not affect that checklist. Frontend/dashboard work remains pending.
 
 ## Engineering tradeoffs
 

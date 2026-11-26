@@ -14,7 +14,7 @@ CareerOS is a full-stack AI platform that helps engineering students with:
 
 ## Current Status
 
-The backend foundation is verified. The frontend (React + TypeScript + Tailwind CSS) is **not yet built** — this repo currently contains only the Node.js/Express backend. Goal creation validates input and registration creates users with bcrypt-hashed passwords and public-field-only responses. Login, refresh rotation, logout and a protected real-user profile are implemented. Goal creation/list/detail now require a valid session and restrict access to the signed-in owner. Verified legacy linkage and mandatory database ownership are complete. Password changes revoke all sessions for that account; this is not a production-ready multi-user API.
+The backend foundation is verified. The frontend (React + TypeScript + Tailwind CSS) is **not yet built** — this repo currently contains only the Node.js/Express backend. Goal creation validates input and registration creates users with bcrypt-hashed passwords and public-field-only responses. Login, refresh rotation, logout and a protected real-user profile are implemented. Goal creation/list/detail now require a valid session and restrict access to the signed-in owner. Verified legacy linkage and mandatory database ownership are complete. Password changes revoke all sessions for that account. Career-profile read/partial-update APIs now persist private education, target role, weekly learning time, interests and bio, with an explicit completion checklist. The frontend and dashboard are still pending; this is not a production-ready multi-user API.
 
 The first release connects a target role, skill/project evidence, explained gaps, goals, a roadmap and a reviewed AI weekly plan. The features above describe the longer-term vision. See [the active milestones](docs/ROADMAP.md), [architecture](docs/ARCHITECTURE.md) and [historical audit](docs/PROJECT_AUDIT.md).
 
@@ -64,7 +64,7 @@ backend/
 │   ├── utils/              # Password hashing, token helpers and API errors
 │   └── generated/prisma/   # Auto-generated Prisma Client
 ├── prisma/
-│   ├── schema.prisma       # Goal, User, AuthSession and RefreshToken models
+│   ├── schema.prisma       # Goal, User, AuthSession, RefreshToken and CareerProfile models
 │   └── migrations/         # SQL migrations
 ├── .env                    # Private database, independent auth secrets and HTTP settings
 ├── package.json
@@ -96,7 +96,9 @@ This Goal field excerpt omits relation/index declarations; see the active Prisma
 | POST   | `/api/goals`          | Create a goal owned by the signed-in account |
 | GET    | `/api/goals`           | List own goals with bounded cursor pagination |
 | GET    | `/api/goals/:id`       | Read own goal; foreign/legacy/missing returns 404 |
-| GET    | `/api/users/profile`   | Return authenticated account's public profile |
+| GET    | `/api/users/profile`   | Return authenticated account's public identity fields |
+| GET    | `/api/users/career-profile` | Read own career profile and completion checklist |
+| PATCH  | `/api/users/career-profile` | Create/update only supplied own career-profile fields |
 | POST   | `/api/users/register`  | Validate signup, hash password and create a user; return public fields |
 | GET    | `/api/auth/csrf`       | Bootstrap session-bound CSRF protection |
 | POST   | `/api/auth/login`      | Verify credentials and start a session |
@@ -170,7 +172,7 @@ From `backend`, run `npm.cmd test`. The Node test runner uses tsx to import Type
 
 Migration `20261123140042_add_auth_sessions_and_goal_owner` adds account/session tables and nullable Goal.userId, with indexes, restrictive foreign keys and RLS on the three credential/session tables. It was rehearsed on an isolated native PostgreSQL 17 restore, then applied on 23 November 2026. Existing goal values and original migration history were preserved; no ownership backfill or account creation occurred during migration. Registration now creates accounts but does not sign them in or claim old goals.
 
-The active schema/migrations are authoritative; [the proposal folder](backend/prisma/proposals/auth/README.md) is now historical reference. `npm.cmd run test:migration:auth` tests the committed migration against fictional old goals in PGlite, including preservation, uniqueness, references, transaction rollback and ordinary-role RLS denial. The default suite currently reports 83 passing tests. Keep backup/recovery artifacts local and ignored. For another environment, review pending SQL and deployment readiness before applying committed migrations with `prisma migrate deploy --config prisma7.config.ts`; regenerate the runtime client after its target schema is compatible. Do not replay the archived proposal SQL or edit applied migration history.
+The active schema/migrations are authoritative; [the proposal folder](backend/prisma/proposals/auth/README.md) is now historical reference. `npm.cmd run test:migration:auth` tests the committed migration against fictional old goals in PGlite, including preservation, uniqueness, references, transaction rollback and ordinary-role RLS denial. The default suite currently reports 86 passing tests. Keep backup/recovery artifacts local and ignored. For another environment, review pending SQL and deployment readiness before applying committed migrations with `prisma migrate deploy --config prisma7.config.ts`; regenerate the runtime client after its target schema is compatible. Do not replay the archived proposal SQL or edit applied migration history.
 
 ### Registration
 
@@ -202,6 +204,16 @@ Migration 20261126190000_require_goal_owner makes Goal.userId required after exp
 
 `npm.cmd run test:integration:password` requires a fresh local database named careeros_test_password_<suffix> using TEST_DATABASE_URL and refuses non-loopback targets, URL query overrides and nonempty schemas. Eight reported tests cover CSRF/session binding, current/new password validation, all-session revocation, another account staying signed in, transaction rollback, concurrent changes/refresh and late old-password login. All four native suites report 30 tests including parents; the default suite reports 83. No real password was changed for verification.
 
+### Career profile (M3 backend step)
+
+GET/PATCH /api/users/career-profile use Bearer authentication and the signed-in owner only. A missing profile returns data:null without creating anything. First nonempty PATCH creates a row; subsequent patches preserve omitted fields, accept null to clear nullable fields and [] to clear interests. See [the profile API contract](docs/API.md#get-apiuserscareer-profile) for field bounds and error behavior.
+
+CareerProfile has a one-to-one relationship with User, with userId as its primary/foreign key. It stores institution, degree, graduationYear, targetRole, weeklyLearningHours, interests and bio. Completion is a five-field data-entry checklist, independent of optional interests/bio, not a career-readiness score. No dashboard metrics or AI suggestions are fabricated.
+
+Migration 20261127120000_add_career_profile was applied after a fresh private application backup, native restore/rehearsal and preservation checks. It creates an empty RLS-protected table; no real profile was prefilled. Ordinary direct database roles cannot access profiles, while the backend owner must enforce account scope. Existing goals, credentials and sessions were preserved.
+
+`npm.cmd run test:integration:profile` requires TEST_DATABASE_URL for a fresh loopback database named careeros_test_profile_<suffix>, rejects query overrides/nonempty schemas and uses fictional accounts. Eight reported tests cover validation, account isolation, partial/cleared fields, native upsert races, app restart persistence, revocation, PATCH preflight and direct-role read/write denial. All five native suites report 38 passing tests including parents; the default suite reports 86. The frontend form and dashboard remain later M3 steps.
+
 ## Environment Variables
 
 | Variable       | Description                  |
@@ -219,7 +231,7 @@ Startup validates settings before constructing the database client. Missing/inva
 
 Helmet supplies security headers and hides Express's identifying header. HTTPS-only browser directives are enabled in production mode and disabled for local development; production hosting still must actually provide HTTPS.
 
-Set `CORS_ORIGINS=http://localhost:5173` locally when the future Vite frontend needs access. Origins must match exactly, with no path, credentials, wildcard or trailing slash; multiple origins are comma-separated. Keep your private `.env` local; auth setup requires two independent secrets. An explicit unapproved Origin receives JSON 403 before route processing. No-Origin root/goal clients such as PowerShell still work; goal operations require a Bearer token. CORS covers GET/POST and Content-Type/Authorization/X-CSRF-Token. Cookie credentials are enabled only on /api/auth paths for exact approved origins. Unsafe auth writes additionally require a trusted Origin/Referer and CSRF protection. CORS is not authentication or a replacement for CSRF protection.
+Set `CORS_ORIGINS=http://localhost:5173` locally when the future Vite frontend needs access. Origins must match exactly, with no path, credentials, wildcard or trailing slash; multiple origins are comma-separated. Keep your private `.env` local; auth setup requires two independent secrets. An explicit unapproved Origin receives JSON 403 before route processing. No-Origin root/goal clients such as PowerShell still work; goal operations require a Bearer token. CORS covers GET/POST/PATCH and Content-Type/Authorization/X-CSRF-Token. Cookie credentials are enabled only on /api/auth paths for exact approved origins. Unsafe auth writes additionally require a trusted Origin/Referer and CSRF protection. CORS is not authentication or a replacement for CSRF protection.
 
 API paths share a limit of 100 requests per IP per 15 minutes, counting successes and failures. Exceeding it returns JSON 429 with Retry-After and standard rate-limit headers. Approved CORS preflights and the root app-information route do not consume that budget. The counter is in memory per server process, resets on restart, and is not distributed DDoS protection; shared-IP users also share a budget. Express retains trust-proxy=false so caller-supplied forwarding headers cannot choose their own rate-limit identity. Review the actual trusted proxy chain and shared counter requirements before production deployment.
 
