@@ -14,13 +14,13 @@ CareerOS is a full-stack AI platform that helps engineering students with:
 
 ## Current Status
 
-The backend foundation is verified. The frontend (React + TypeScript + Tailwind CSS) is **not yet built** — this repo currently contains only the Node.js/Express backend. Goal creation validates input and registration creates users with bcrypt-hashed passwords and public-field-only responses. Login, refresh rotation, logout and a protected real-user profile are implemented. Goal creation/list/detail now require a valid session and restrict access to the signed-in owner. Verified legacy linkage and mandatory database ownership are complete. Password changes revoke all sessions for that account. Career-profile read/partial-update APIs now persist private education, target role, weekly learning time, interests and bio, with an explicit completion checklist. The frontend and dashboard are still pending; this is not a production-ready multi-user API.
+The backend foundation is verified. The React/TypeScript/Vite/Tailwind frontend now includes a responsive shell, sign-in/registration and a connected private career-profile form. Goal creation validates input and registration creates users with bcrypt-hashed passwords and public-field-only responses. Login, refresh rotation, logout and a protected real-user profile are implemented. Goal creation/list/detail now require a valid session and restrict access to the signed-in owner. Verified legacy linkage and mandatory database ownership are complete. Password changes revoke all sessions for that account. Career-profile read/partial-update APIs now persist private education, target role, weekly learning time, interests and bio, with an explicit completion checklist. The real dashboard, deployment preview and owner-run end-to-end acceptance remain pending; this is not a production-ready multi-user API.
 
 The first release connects a target role, skill/project evidence, explained gaps, goals, a roadmap and a reviewed AI weekly plan. The features above describe the longer-term vision. See [the active milestones](docs/ROADMAP.md), [architecture](docs/ARCHITECTURE.md) and [historical audit](docs/PROJECT_AUDIT.md).
 
 ## Tech Stack
 
-### Frontend (planned)
+### Frontend
 - React
 - TypeScript
 - Tailwind CSS
@@ -37,6 +37,12 @@ The first release connects a target role, skill/project evidence, explained gaps
 
 ### AI
 - Planned: one LLM provider behind a separate AI service interface. No AI integration exists yet; Gemini was an early option.
+
+## Run the frontend
+
+After completing backend setup below, run the backend with `npm.cmd run dev` from backend, then `npm.cmd ci` and `npm.cmd run dev` from frontend in a second terminal. Open http://localhost:5173 and use your existing account. The default proxy targets backend port 3000. The form reads/saves real data; browser automation uses a separate guarded local fixture instead of Supabase. See [frontend setup, session behavior and browser-test instructions](frontend/README.md).
+
+Frontend typecheck/build and 13 client/form unit tests pass. Six guarded real-browser flows pass, including reload persistence and simultaneous tab renewal; the backend default suite now reports 87 passing tests. These checks do not replace owner-run acceptance or a later hosted-preview review.
 
 ## Backend Architecture
 
@@ -212,7 +218,7 @@ CareerProfile has a one-to-one relationship with User, with userId as its primar
 
 Migration 20261127120000_add_career_profile was applied after a fresh private application backup, native restore/rehearsal and preservation checks. It creates an empty RLS-protected table; no real profile was prefilled. Ordinary direct database roles cannot access profiles, while the backend owner must enforce account scope. Existing goals, credentials and sessions were preserved.
 
-`npm.cmd run test:integration:profile` requires TEST_DATABASE_URL for a fresh loopback database named careeros_test_profile_<suffix>, rejects query overrides/nonempty schemas and uses fictional accounts. Eight reported tests cover validation, account isolation, partial/cleared fields, native upsert races, app restart persistence, revocation, PATCH preflight and direct-role read/write denial. All five native suites report 38 passing tests including parents; the default suite reports 86. The frontend form and dashboard remain later M3 steps.
+`npm.cmd run test:integration:profile` requires TEST_DATABASE_URL for a fresh loopback database named careeros_test_profile_<suffix>, rejects query overrides/nonempty schemas and uses fictional accounts. Eight reported tests cover validation, account isolation, partial/cleared fields, native upsert races, app restart persistence, revocation, PATCH preflight and direct-role read/write denial. All five native suites report 38 passing tests including parents; the default suite reports 86. The frontend form is implemented; dashboard summaries and hosted-preview work remain later M3 steps.
 
 ## Environment Variables
 
@@ -239,8 +245,8 @@ POST /api/users/register additionally has a 10-attempt/IP/15-minute budget; fail
 
 ## Roadmap
 
-- [ ] Build React frontend (TypeScript + Tailwind)
-- [ ] User authentication
+- [x] Build React shell, authentication screens and career-profile form (TypeScript + Tailwind)
+- [x] User authentication, session handling and owned profile access
 - [ ] Resume analysis & ATS scoring
 - [ ] Validated AI weekly planning first; broader career assistant later
 - [ ] Mock interview module

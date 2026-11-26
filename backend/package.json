@@ -19,7 +19,8 @@
     "test:migration:auth": "node --import tsx --test tests/auth-migration.test.mjs",
     "test:integration:goals": "node --import ./tests/setup-env.mjs --import tsx --test tests/integration/goals.test.mjs",
     "test:integration:password": "node --import ./tests/setup-env.mjs --import tsx --test tests/integration/password-change.test.mjs",
-    "test:integration:profile": "node --import ./tests/setup-env.mjs --import tsx --test tests/integration/career-profile.test.mjs"
+    "test:integration:profile": "node --import ./tests/setup-env.mjs --import tsx --test tests/integration/career-profile.test.mjs",
+    "test:browser-server": "node --import ./tests/setup-env.mjs --import tsx tests/fixtures/browser-server.mjs"
   },
   "keywords": [],
   "author": "",

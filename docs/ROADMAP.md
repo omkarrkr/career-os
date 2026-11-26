@@ -119,11 +119,15 @@ Acceptance: two users cannot access each other's resources; existing data is pre
 
 - [x] Add private career-profile GET/PATCH APIs, bounded fields, one-to-one storage and documented five-field completion checklist.
 - [ ] Add real dashboard summaries as the frontend workflow needs them.
-- [ ] Scaffold React/TypeScript/Vite/Tailwind and routing incrementally.
-- [ ] Build authentication, dashboard and profile pages with API integration.
-- [ ] Add reusable accessible forms, loading/error/empty states and responsive navigation.
+- [x] Scaffold React/TypeScript/Vite/Tailwind and protected routing.
+- [x] Build registration/login, session-aware navigation and the career-profile form with API integration.
+- [ ] Build a real dashboard and verify the complete workflow with the owner.
+- [x] Add labeled forms, loading/error/empty/unsaved states and responsive keyboard-aware navigation.
+- [ ] Review remaining accessibility cases and prepare an appropriate deployment preview.
 
 M3 backend step (27 November): CareerProfile has one unique owner, partial-save validation, explicit null/empty-list clearing and owner-scoped GET/PATCH. Completion lists five core fields and makes no readiness claims. The additive empty-table migration passed fresh scoped backup/restore and native rehearsal; prior goals/account/session values were preserved. RLS denies ordinary direct profile access. Typecheck/build/schema validation, 86 default tests and 38 native integration tests pass (including parents), including two-user isolation, concurrent first saves and application-restart persistence. M3 remains in progress: frontend forms, auth screens, real dashboard, accessibility and preview are not complete.
+
+M3 frontend step (27 November): responsive React shell, registration/sign-in, memory-only auth/session restoration and the connected profile form implemented. Auth operations serialize across tabs; refreshed identities are checked before request replay. Edits use partial PATCH and explicit clearing with saved-field completion; errors preserve current input. Thirteen frontend unit tests, six guarded browser flows, frontend typecheck/build and 87 backend tests pass. Browser QA uses fictional native PostgreSQL data only; no schema or Supabase records changed. Dashboard, owner-run acceptance and hosted preview are still pending, so M3 remains in progress.
 
 Acceptance: an authenticated user edits their profile and sees persisted real data after reload. No fabricated dashboard statistics.
 
