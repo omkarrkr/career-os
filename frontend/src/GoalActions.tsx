@@ -1,12 +1,13 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useContext, useEffect, useRef, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { auth } from './lib/auth';
 import { ApiError } from './lib/auth-client';
-import { useFormGuard } from './lib/form-guard';
+import { DirtyContext, useFormGuard } from './lib/form-guard';
+import { SubtasksPanel } from './SubtasksPanel';
 import type { Goal, GoalResponse } from './lib/types';
 
-const values = (goal: Goal) => ({ title: goal.title, category: goal.category, description: goal.description ?? '', targetDate: goal.targetDate?.slice(0, 10) ?? '' });
+const values = (goal: Goal) => ({ title: goal.title, category: goal.category, priority: goal.priority ?? 'MEDIUM', description: goal.description ?? '', targetDate: goal.targetDate?.slice(0, 10) ?? '' });
 type Draft = ReturnType<typeof values>;
 
 export function GoalActions({ goal, userId, reload }: { goal: Goal; userId: number; reload: () => Promise<GoalResponse> }) {
@@ -15,6 +16,7 @@ export function GoalActions({ goal, userId, reload }: { goal: Goal; userId: numb
   const [error, setError] = useState(''); const [success, setSuccess] = useState('');
   const [fields, setFields] = useState<Record<string, string>>({}); const [uncertain, setUncertain] = useState(false);
   const [deleted, setDeleted] = useState(false);
+  const shared = useContext(DirtyContext);
   const client = useQueryClient(); const navigate = useNavigate();
   const errorRef = useRef<HTMLDivElement>(null); const editorRef = useRef<HTMLHeadingElement>(null);
   const dirty = editing && JSON.stringify(form) !== JSON.stringify(base);
@@ -74,16 +76,17 @@ export function GoalActions({ goal, userId, reload }: { goal: Goal; userId: numb
     {editing ? <form className="goal-form" onSubmit={save}>
       <h3 ref={editorRef} tabIndex={-1}>Edit goal</h3>
       <fieldset disabled={busy} aria-label="Edit goal information">
-        {(Object.keys(form) as (keyof Draft)[]).map(key => <div className="goal-field" key={key}><label htmlFor={`edit-goal-${key}`}>{({ title: 'Title', category: 'Category', description: 'Description (optional)', targetDate: 'Target date (optional)' })[key]}</label>
-          {key === 'description' ? <textarea id={`edit-goal-${key}`} rows={5} maxLength={5000} value={form[key]} onChange={event => { setForm(current => ({ ...current, [key]: event.target.value })); setFields({}); }} aria-invalid={!!fields[key]} aria-describedby={fields[key] ? `edit-${key}-error` : undefined} /> : <input id={`edit-goal-${key}`} type={key === 'targetDate' ? 'date' : 'text'} maxLength={key === 'title' ? 200 : key === 'category' ? 100 : undefined} required={key === 'title' || key === 'category'} value={form[key]} onChange={event => { setForm(current => ({ ...current, [key]: event.target.value })); setFields({}); }} aria-invalid={!!fields[key]} aria-describedby={fields[key] ? `edit-${key}-error` : undefined} />}
+        {(Object.keys(form) as (keyof Draft)[]).map(key => <div className="goal-field" key={key}><label htmlFor={`edit-goal-${key}`}>{({ title: 'Title', category: 'Category', priority: 'Priority', description: 'Description (optional)', targetDate: 'Target date (optional)' })[key]}</label>
+          {key === 'priority' ? <select id="edit-goal-priority" value={form.priority} onChange={event => setForm(current => ({ ...current, priority: event.target.value as Goal['priority'] }))}><option value="LOW">Low</option><option value="MEDIUM">Medium</option><option value="HIGH">High</option></select> : key === 'description' ? <textarea id={`edit-goal-${key}`} rows={5} maxLength={5000} value={form[key]} onChange={event => { setForm(current => ({ ...current, [key]: event.target.value })); setFields({}); }} aria-invalid={!!fields[key]} aria-describedby={fields[key] ? `edit-${key}-error` : undefined} /> : <input id={`edit-goal-${key}`} type={key === 'targetDate' ? 'date' : 'text'} maxLength={key === 'title' ? 200 : key === 'category' ? 100 : undefined} required={key === 'title' || key === 'category'} value={form[key]} onChange={event => { setForm(current => ({ ...current, [key]: event.target.value })); setFields({}); }} aria-invalid={!!fields[key]} aria-describedby={fields[key] ? `edit-${key}-error` : undefined} />}
           {fields[key] && <span className="field-error" id={`edit-${key}-error`}>{fields[key]}</span>}
         </div>)}
         <p className="field-hint">Clear an optional field to remove it. Goal dates use UTC calendar days.</p>
       </fieldset><div className="goal-form-actions"><button className="button primary" disabled={busy || uncertain || !dirty}>{busy ? 'Saving…' : 'Save goal'}</button><button className="button secondary" type="button" disabled={busy} onClick={() => { if (!dirty || window.confirm('Discard unsaved goal changes?')) { setEditing(false); setError(''); setFields({}); } }}>Cancel editing</button></div>
     </form> : <div className="goal-form-actions">
-      <button className="button secondary" disabled={busy || uncertain} onClick={() => { const initial = values(goal); setForm(initial); setBase(initial); setEditing(true); setSuccess(''); setError(''); }}>Edit goal</button>
-      {goal.status !== 'COMPLETED' && <button className="button primary" disabled={busy || uncertain} onClick={() => patch({ status: 'COMPLETED' }, 'Goal marked completed.')}>{busy ? 'Updating…' : 'Mark completed'}</button>}
-      <button className="button danger" disabled={busy || uncertain} onClick={remove}>Delete goal</button>
+      <button className="button secondary" disabled={busy || uncertain || shared.dirty || shared.saving} onClick={() => { const initial = values(goal); setForm(initial); setBase(initial); setEditing(true); setSuccess(''); setError(''); }}>Edit goal</button>
+      {goal.status !== 'COMPLETED' && <button className="button primary" disabled={busy || uncertain || shared.dirty || shared.saving} onClick={() => patch({ status: 'COMPLETED' }, 'Goal marked completed.')}>{busy ? 'Updating…' : 'Mark completed'}</button>}
+      <button className="button danger" disabled={busy || uncertain || shared.dirty || shared.saving} onClick={remove}>Delete goal</button>
     </div>}
+    {!editing && <SubtasksPanel userId={userId} goalId={goal.id} disabled={busy || uncertain} />}
   </section>;
 }

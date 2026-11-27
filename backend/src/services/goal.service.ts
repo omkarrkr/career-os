@@ -7,7 +7,8 @@ export const createGoal = async (
     title: string,
     description: string | undefined,
     category: string,
-    targetDate: string | undefined
+    targetDate: string | undefined,
+    priority: "LOW" | "MEDIUM" | "HIGH" | undefined
 ) => {
     const goal = await prisma.goal.create({
         data: {
@@ -16,6 +17,7 @@ export const createGoal = async (
             category,
             ...(description !== undefined ? { description } : {}),
             ...(targetDate ? { targetDate: new Date(targetDate) } : {}),
+            ...(priority !== undefined ? { priority } : {}),
         },
     });
 
@@ -41,13 +43,14 @@ export const listGoals = async (userId: number, { limit, afterId, q, status, sor
 export const getGoal = (userId: number, id: number) => prisma.goal.findFirst({ where: { id, userId } });
 
 export const updateGoal = async (userId: number, id: number, patch: z.infer<typeof updateGoalSchema>) => {
-    const { title, category, description, status, targetDate } = patch;
+    const { title, category, description, status, targetDate, priority } = patch;
     // Ownership and mutation are checked in the same SQL operation.
     const rows = await prisma.goal.updateManyAndReturn({
         where: { id, userId },
         data: {
             ...(title !== undefined ? { title } : {}), ...(category !== undefined ? { category } : {}),
             ...(description !== undefined ? { description } : {}), ...(status !== undefined ? { status } : {}),
+            ...(priority !== undefined ? { priority } : {}),
             ...(targetDate !== undefined ? { targetDate: targetDate === null ? null : new Date(targetDate) } : {}),
         },
     });

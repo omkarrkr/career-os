@@ -40,7 +40,7 @@ Unexpected goal-service failures now propagate through Express 5's async error h
 
 Both require a valid Bearer access token and active session. Lists return 200 `{data:[Goal],nextCursor:number|null}` ordered by id ascending by default (descending with sort=newest), scoped to the signed-in user. Optional limit is an integer string 1-50 (default 20); afterId is a positive PostgreSQL Int ID. Send the previous nextCursor as afterId for the next page. Invalid IDs/query values return 400 `Invalid goal ID` or `Invalid goal query`. Pagination retrieves at most 51 rows per request. Unknown query fields, including userId, cannot change the owner filter.
 
-Detail returns 200 `{data:Goal}` only when both id and userId match. A foreign-owned, NULL-owned legacy or nonexistent goal returns the identical 404 `{message:"Goal not found"}`. Missing/invalid/revoked authentication returns 401 before goal queries. Authenticated responses use no-store. Update/delete are not implemented; no claim-legacy endpoint exists.
+Detail returns 200 `{data:Goal}` only when both id and userId match. A foreign-owned, NULL-owned legacy or nonexistent goal returns the identical 404 `{message:"Goal not found"}`. Missing/invalid/revoked authentication returns 401 before goal queries. Authenticated responses use no-store. Owned PATCH/DELETE are documented below; no claim-legacy endpoint exists.
 
 Migration 20261124120000_protect_goal_data_api enables Goal RLS without public policies, closing ordinary-role direct Supabase Data API access. It refuses unexpected existing policies. The owning backend role can still access rows and must enforce userId in every operation. Service-role/admin credentials remain privileged and must stay private. This changes security metadata only: existing goal fields and NULL ownership are preserved.
 
@@ -176,4 +176,17 @@ Sorting uses insertion ID: oldest ascends, newest descends. Each page remains bo
 
 ## Priority/subtask storage stage
 
-Storage is prepared for LOW/MEDIUM/HIGH priorities and subtasks. Existing goals default to MEDIUM. Current goal responses may include priority, but goal create/update inputs and frontend controls have not yet been extended for this feature. Subtask endpoints are not implemented in this stage; ordinary direct Data API roles cannot access the new table. Parent goal deletion cascades to its subtasks, and the frontend confirmation now names this effect. Subsequent API work must enforce ownership via the parent goal, validate inputs and keep lists bounded. Completing subtasks does not currently change parent status automatically.
+Storage is prepared for LOW/MEDIUM/HIGH priorities and subtasks. Existing goals default to MEDIUM. The storage checkpoint initially added no controls; the owned APIs and frontend support are now documented below. Ordinary direct Data API roles cannot access the new table. Parent goal deletion cascades to its subtasks, and the frontend confirmation now names this effect. Subsequent API work must enforce ownership via the parent goal, validate inputs and keep lists bounded. Completing subtasks does not currently change parent status automatically.
+
+## Owned subtask APIs and goal priority
+
+Goal POST/PATCH now accept priority LOW/MEDIUM/HIGH. Omission on POST uses the database MEDIUM default; omission on PATCH preserves the stored value. Null/unknown priorities return 400. Priority does not change status or reorder existing oldest/newest lists.
+
+All subtask routes require the existing Bearer token and a live session:
+
+- GET /api/goals/:id/subtasks: limit 1–50 (default 20), optional afterId; returns `{data,nextCursor,summary:{total,completed}}`. ID-ascending cursor pagination; summary covers the entire owned goal, not just loaded rows. A repeatable-read transaction keeps one response internally consistent. Unknown/repeated query fields return 400.
+- POST /api/goals/:id/subtasks: strict `{title}`; trimmed nonblank text, max 200 characters. Returns 201 `{data:subtask}`. New records start unchecked. Parent ownership is checked while holding a parent row lock; additions serialize per goal and reject a 101st subtask with 409. The database FK handles parent deletion consistently.
+- PATCH /api/goals/:id/subtasks/:subtaskId: strict nonempty partial `{title?,isCompleted?}`. Completion must be an explicit boolean. Returns 200 `{data:subtask}`. Cannot move a child, set its owner/ID/timestamps or supply other fields.
+- DELETE /api/goals/:id/subtasks/:subtaskId: returns 204 after owned deletion; there is no undo. Frontend confirmation is additional UX, independent of backend authorization.
+
+Records select only id, goalId, title, isCompleted, createdAt and updatedAt. GET/POST return Goal not found for unavailable/foreign parents. PATCH/DELETE return identical Subtask not found for missing, foreign or wrong-parent child IDs. Malformed IDs or payloads return safe 400; anonymous/invalid/revoked sessions return 401. Every child mutation includes both parent ID and the relation to the signed-in account in the mutation predicate. Existing rate limits, CORS, no-store and safe-error policies apply. Checking/unchecking/renaming subtasks never changes parent goal status or priority. Completed goals remain editable. No new migration is required in this increment.

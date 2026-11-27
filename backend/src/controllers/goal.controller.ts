@@ -62,9 +62,9 @@ export const createGoalController = async (
         return;
     }
 
-    const { title, description, category, targetDate } = result.data;
+    const { title, description, category, targetDate, priority } = result.data;
 
-    const goal = await createGoal(ownerId(res), title, description, category, targetDate);
+    const goal = await createGoal(ownerId(res), title, description, category, targetDate, priority);
 
     res.status(201).json({
         message: "Goal created successfully",

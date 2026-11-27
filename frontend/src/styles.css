@@ -163,3 +163,11 @@ nav a[aria-disabled="true"] { opacity: .6; cursor: wait; }
 .goal-search-controls input { min-width: 0; }
 .goal-filters select { display: block; width: 100%; max-width: 100%; margin-top: 9px; border: 1px solid #d6e0e4; border-radius: 7px; padding: 12px; background: white; color: #294650; font: inherit; min-height: 44px; }
 @media(max-width:640px) { .goal-filters { align-items: stretch; }.goal-filters > div { flex: 1 1 100%; }.goal-filters input,.goal-filters select { font-size: 16px; }.goal-search-controls .button { padding: 11px 14px; } }
+.goal-field select { width: 100%; margin-top: 9px; border: 1px solid #d6e0e4; border-radius: 7px; padding: 12px; min-height: 44px; color: #294650; background: white; font: inherit; }
+.priority-badge { display: inline-block; margin: 0 0 18px; color: #52676d; font-size: 13px; }
+.subtasks-panel { border-top: 1px solid #e5edef; margin-top: 30px; padding-top: 25px; }
+.subtasks-panel h3 { margin: 0; }.subtask-summary { margin-top: 18px; font-weight: 600; }
+.subtask-list { margin: 18px 0; padding: 0; list-style: none; }.subtask-list li { padding: 15px 0; border-bottom: 1px solid #e5edef; display: flex; align-items: start; justify-content: space-between; gap: 12px; }
+.subtask-check { display: flex; gap: 12px; align-items: start; min-width: 0; flex: 1; }.subtask-check span { overflow-wrap: anywhere; }.subtask-check input { width: 20px; height: 20px; min-height: 20px; flex: 0 0 20px; margin: 3px 0 0; padding: 0; }
+.subtask-done { text-decoration: line-through; color: #61777c; }.subtask-buttons { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }.subtask-list .subtask-buttons { margin-top: 0; }.subtask-edit { width: 100%; }.subtask-add { margin-top: 20px; }
+@media(max-width:640px) { .subtask-list li { flex-direction: column; }.subtasks-panel input,.goal-field select { font-size: 16px; } }

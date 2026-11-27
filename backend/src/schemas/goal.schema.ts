@@ -11,6 +11,7 @@ export const listGoalsSchema = z.object({
 });
 
 export const createGoalSchema = z.object({
+    priority: z.enum(["LOW", "MEDIUM", "HIGH"]).optional(),
     title: z.string({ error: "Title must be text" })
         .trim()
         .min(1, "Title is required")

@@ -66,6 +66,7 @@ export function GoalDetailPage({ userId }: { userId: number }) {
     {unavailable ? <section className="panel goals-panel" role="alert"><h2>Goal unavailable</h2><p>This goal could not be found in your account.</p></section> : query.isPending ? <p role="status">Loading goal…</p> : !goal ? <section className="panel goals-panel" role="alert"><p>We couldn’t load this goal. {query.error?.message}</p><button className="button secondary" onClick={() => query.refetch()}>Try again</button></section> : <section className="panel goals-panel goal-detail">
       {query.isError && <p role="alert">Could not refresh this goal. Showing the last loaded details.</p>}
       <span className="goal-status">{statusLabel(goal.status)}</span><h2>{goal.title}</h2><p className="goal-category">{goal.category}</p>
+      <p className="priority-badge">Priority: {goal.priority === 'HIGH' ? 'High' : goal.priority === 'LOW' ? 'Low' : 'Medium'}</p>
       <dl className="education-summary"><div><dt>Created</dt><dd>{dateLabel(goal.createdAt)}</dd></div><div><dt>Target date</dt><dd>{goal.targetDate ? `${dateLabel(goal.targetDate)} (UTC)` : 'No target date'}</dd></div></dl>
       <h3>Description</h3><p className="goal-description">{goal.description?.trim() ? goal.description : 'No description added.'}</p>
       <GoalActions key={goal.id} goal={goal} userId={userId} reload={async () => { const result = await query.refetch(); if (result.error) throw result.error; return result.data!; }} />
@@ -73,14 +74,14 @@ export function GoalDetailPage({ userId }: { userId: number }) {
   </main>;
 }
 
-const blank = { title: '', category: '', description: '', targetDate: '' };
+const blank = { title: '', category: '', priority: 'MEDIUM', description: '', targetDate: '' };
 export function NewGoalPage({ userId }: { userId: number }) {
   const [form, setForm] = useState({ ...blank }); const [saving, setSaving] = useState(false);
   const [created, setCreated] = useState<number | null>(null); const [error, setError] = useState('');
   const [fields, setFields] = useState<Record<string, string>>({});
   const [uncertain, setUncertain] = useState(false);
   const errorRef = useRef<HTMLDivElement>(null); const client = useQueryClient(); const navigate = useNavigate();
-  const dirty = created === null && Object.values(form).some(Boolean);
+  const dirty = created === null && JSON.stringify(form) !== JSON.stringify(blank);
   useFormGuard(dirty, saving);
   useEffect(() => { document.title = 'New goal · CareerOS'; }, []);
   useEffect(() => { if (error) errorRef.current?.focus(); }, [error]);
@@ -95,7 +96,7 @@ export function NewGoalPage({ userId }: { userId: number }) {
     if (Object.keys(invalid).length) { setError('Please check the highlighted details.'); return; }
     setSaving(true);
     try {
-      const response = await auth.api<GoalResponse>('/api/goals', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: form.title.trim(), category: form.category.trim(), ...(form.description ? { description: form.description } : {}), ...(form.targetDate ? { targetDate: form.targetDate } : {}) }) });
+      const response = await auth.api<GoalResponse>('/api/goals', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: form.title.trim(), category: form.category.trim(), priority: form.priority, ...(form.description ? { description: form.description } : {}), ...(form.targetDate ? { targetDate: form.targetDate } : {}) }) });
       client.setQueryData(['goal', userId, String(response.data.id)], response);
       void client.invalidateQueries({ queryKey: ['goals', userId] }); void client.invalidateQueries({ queryKey: ['dashboard', userId] });
       setCreated(response.data.id);
@@ -112,9 +113,9 @@ export function NewGoalPage({ userId }: { userId: number }) {
     <form className="panel goals-panel goal-form" onSubmit={submit}>
       {error && <div ref={errorRef} tabIndex={-1} className="notice error" role="alert">{error}{uncertain && <p><Link to="/goals">Check saved goals</Link></p>}</div>}
       <fieldset aria-label="Goal information" disabled={saving || created !== null}>
-        {(['title', 'category', 'targetDate', 'description'] as const).map(key => <div className="goal-field" key={key}><label htmlFor={`goal-${key}`}>{({ title: 'Title', category: 'Category', targetDate: 'Target date (optional)', description: 'Description (optional)' })[key]}</label>
-          {key === 'description' ? <textarea id={`goal-${key}`} rows={5} maxLength={5000} value={form[key]} onChange={event => change(key, event.target.value)} aria-invalid={!!fields[key]} aria-describedby={`goal-${key}-hint${fields[key] ? ` goal-${key}-error` : ''}`} /> : <input id={`goal-${key}`} type={key === 'targetDate' ? 'date' : 'text'} maxLength={key === 'title' ? 200 : key === 'category' ? 100 : undefined} required={key === 'title' || key === 'category'} value={form[key]} onChange={event => change(key, event.target.value)} aria-invalid={!!fields[key]} aria-describedby={`goal-${key}-hint${fields[key] ? ` goal-${key}-error` : ''}`} />}
-          <span className="field-hint" id={`goal-${key}-hint`}>{({ title: 'Up to 200 characters.', category: 'For example: Learning, Projects or Career. Up to 100 characters.', targetDate: 'Stored as a UTC calendar date. Leave blank if undecided.', description: 'Add context or a small first step. Up to 5,000 characters.' })[key]}</span>
+        {(['title', 'category', 'priority', 'targetDate', 'description'] as const).map(key => <div className="goal-field" key={key}><label htmlFor={`goal-${key}`}>{({ title: 'Title', category: 'Category', priority: 'Priority', targetDate: 'Target date (optional)', description: 'Description (optional)' })[key]}</label>
+          {key === 'priority' ? <select id="goal-priority" value={form.priority} onChange={event => change('priority', event.target.value)} aria-describedby="goal-priority-hint"><option value="LOW">Low</option><option value="MEDIUM">Medium</option><option value="HIGH">High</option></select> : key === 'description' ? <textarea id={`goal-${key}`} rows={5} maxLength={5000} value={form[key]} onChange={event => change(key, event.target.value)} aria-invalid={!!fields[key]} aria-describedby={`goal-${key}-hint${fields[key] ? ` goal-${key}-error` : ''}`} /> : <input id={`goal-${key}`} type={key === 'targetDate' ? 'date' : 'text'} maxLength={key === 'title' ? 200 : key === 'category' ? 100 : undefined} required={key === 'title' || key === 'category'} value={form[key]} onChange={event => change(key, event.target.value)} aria-invalid={!!fields[key]} aria-describedby={`goal-${key}-hint${fields[key] ? ` goal-${key}-error` : ''}`} />}
+          <span className="field-hint" id={`goal-${key}-hint`}>{({ title: 'Up to 200 characters.', category: 'For example: Learning, Projects or Career. Up to 100 characters.', priority: 'Low, Medium or High. Priority does not change completion.', targetDate: 'Stored as a UTC calendar date. Leave blank if undecided.', description: 'Add context or a small first step. Up to 5,000 characters.' })[key]}</span>
           {fields[key] && <span className="field-error" id={`goal-${key}-error`}>{fields[key]}</span>}
         </div>)}
       </fieldset><div className="goal-form-actions"><button className="button primary" type="submit" disabled={saving || uncertain || created !== null}>{saving ? 'Creating…' : 'Create goal'}</button><span className="field-hint">New goals start as Active.</span></div>

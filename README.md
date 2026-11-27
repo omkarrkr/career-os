@@ -269,4 +269,6 @@ Goal details now also support partial editing, marking completed and permanent d
 
 The Goals list also supports literal case-insensitive search across title/category/description, status filters and oldest/newest-added sorting. Filtering happens before pagination on the backend; changing criteria starts a fresh first page.
 
-Priority/subtask database foundation is now applied and verified: existing goals have Medium priority and the private subtask table is ready. API support and frontend controls for these two features are still the next increment. Existing goal workflows remain available.
+Priority/subtask database foundation is now applied and verified: existing goals have Medium priority and the private subtask table is ready. API support and frontend controls for these two features are now connected below. Existing goal workflows remain available.
+
+Priority and subtask controls are now connected: set Low/Medium/High priority, then add, rename, check/uncheck and confirmation-delete owned subtasks from goal details. Checklist progress is separate from the goal's completed status. The prior storage migration is reused; this increment needs no new database change.

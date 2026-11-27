@@ -1,25 +1,12 @@
-import { createContext, useContext, useEffect, useRef } from 'react';
-import { useBlocker } from 'react-router';
+import { createContext, useContext, useEffect, useId } from 'react';
 
-export const DirtyContext = createContext({ dirty: false, setDirty: (_value: boolean) => {}, saving: false, setSaving: (_value: boolean) => {} });
+export type FormState = { dirty: boolean; saving: boolean };
+export const DirtyContext = createContext({ dirty: false, setDirty: (_value: boolean) => {}, saving: false, setSaving: (_value: boolean) => {}, registerForm: (_id: string, _state: FormState | null) => {} });
 
 export function useFormGuard(dirty: boolean, saving: boolean) {
-  const { setDirty, setSaving } = useContext(DirtyContext);
-  const blocker = useBlocker(({ currentLocation, nextLocation }) => (dirty || saving) && currentLocation.pathname !== nextLocation.pathname);
-  const prompted = useRef<object | null>(null);
+  const { registerForm } = useContext(DirtyContext); const id = useId();
   useEffect(() => {
-    if (blocker.state !== 'blocked') { prompted.current = null; return; }
-    if (prompted.current === blocker) return;
-    prompted.current = blocker;
-    if (saving) { blocker.reset(); return; }
-    if (window.confirm('Discard unsaved goal changes and leave this page?')) blocker.proceed(); else blocker.reset();
-  }, [blocker, saving]);
-  useEffect(() => { setDirty(dirty); return () => setDirty(false); }, [dirty, setDirty]);
-  useEffect(() => { setSaving(saving); return () => setSaving(false); }, [saving, setSaving]);
-  useEffect(() => {
-    if (!dirty && !saving) return;
-    const handler = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ''; };
-    window.addEventListener('beforeunload', handler);
-    return () => window.removeEventListener('beforeunload', handler);
-  }, [dirty, saving]);
+    registerForm(id, { dirty, saving });
+    return () => registerForm(id, null);
+  }, [id, dirty, saving, registerForm]);
 }

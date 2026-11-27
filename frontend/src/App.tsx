@@ -1,11 +1,11 @@
-import { useContext, useEffect, useRef, useState, useSyncExternalStore, type FormEvent } from 'react';
+import { useCallback, useContext, useEffect, useRef, useState, useSyncExternalStore, type FormEvent } from 'react';
 import { Link, Navigate, Route, Routes, useLocation, useNavigate, useBlocker } from 'react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowUpRight, BookOpen, Check, CheckCircle2, ChevronRight, Compass, GraduationCap, Leaf, LoaderCircle, LogOut, Menu, LayoutDashboard, ShieldCheck, Sparkles, Target, X } from 'lucide-react';
 import { auth } from './lib/auth';
 import { DashboardPage } from './DashboardPage';
 import { GoalsPage, NewGoalPage, GoalDetailPage } from './GoalsPage';
-import { DirtyContext } from './lib/form-guard';
+import { DirtyContext, type FormState } from './lib/form-guard';
 import { ApiError } from './lib/auth-client';
 import { buildPatch, emptyForm, toForm, type FormValues } from './lib/profile-form';
 import type { CoreField, ProfileResponse } from './lib/types';
@@ -128,25 +128,11 @@ function ProfilePage({ userId }: { userId: number }) {
   const [initialized, setInitialized] = useState(false); const [busy, setBusy] = useState(false); const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({}); const [success, setSuccess] = useState('');
   const dirty = initialized && JSON.stringify(form) !== JSON.stringify(saved);
-  const blocker = useBlocker(({ currentLocation, nextLocation }) => dirty && currentLocation.pathname !== nextLocation.pathname);
-  const promptedTransition = useRef<object | null>(null);
-  useEffect(() => {
-    if (blocker.state !== 'blocked') { promptedTransition.current = null; return; }
-    if (promptedTransition.current === blocker) return;
-    promptedTransition.current = blocker;
-    if (busy) { blocker.reset(); return; }
-    if (window.confirm('Discard unsaved profile changes and leave this page?')) blocker.proceed(); else blocker.reset();
-  }, [blocker, busy]);
   const errorRef = useRef<HTMLDivElement>(null);
   useEffect(() => { document.title = 'Career profile · CareerOS'; }, []);
   useEffect(() => { if (query.data && !initialized) { const values = toForm(query.data.data); setForm(values); setSaved(values); setInitialized(true); } }, [query.data, initialized]);
   useEffect(() => { setSaving(busy); return () => setSaving(false); }, [busy, setSaving]);
   useEffect(() => { setDirty(dirty); return () => setDirty(false); }, [dirty, setDirty]);
-  useEffect(() => {
-    if (!dirty) return;
-    const beforeUnload = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ''; };
-    window.addEventListener('beforeunload', beforeUnload); return () => window.removeEventListener('beforeunload', beforeUnload);
-  }, [dirty]);
   useEffect(() => { if (error) errorRef.current?.focus(); }, [error]);
   const change = (key: keyof FormValues, value: string) => { setForm(current => ({ ...current, [key]: value })); setSuccess(''); setFieldErrors(current => ({ ...current, [key]: '' })); };
   const reload = async () => {
@@ -206,16 +192,39 @@ export function App() {
     const frame = requestAnimationFrame(() => document.getElementById('main-content')?.focus());
     return () => cancelAnimationFrame(frame);
   }, [pathname, session.status]);
-  const client = useQueryClient(); const previous = useRef<number | null>(null); const [dirty, setDirty] = useState(false); const [saving, setSaving] = useState(false);
+  const client = useQueryClient(); const previous = useRef<number | null>(null);
+  const [profileDirty, setDirty] = useState(false); const [profileSaving, setSaving] = useState(false);
+  const [forms, setForms] = useState<Record<string, FormState>>({});
+  const liveForms = useRef<Record<string, FormState>>({});
+  const registerForm = useCallback((id: string, state: FormState | null) => {
+    const next = { ...liveForms.current }; if (state) next[id] = state; else delete next[id];
+    liveForms.current = next; setForms(next);
+  }, []);
+  const dirty = profileDirty || Object.values(forms).some(form => form.dirty);
+  const saving = profileSaving || Object.values(forms).some(form => form.saving);
+  const blocker = useBlocker(({ currentLocation, nextLocation }) => auth.getSnapshot().status === 'authenticated' && (profileDirty || profileSaving || Object.values(liveForms.current).some(form => form.dirty || form.saving)) && currentLocation.pathname !== nextLocation.pathname);
+  const prompted = useRef<object | null>(null);
+  useEffect(() => {
+    if (blocker.state !== 'blocked') { prompted.current = null; return; }
+    if (prompted.current === blocker) return;
+    prompted.current = blocker;
+    if (saving) { blocker.reset(); return; }
+    if (window.confirm('Discard unsaved changes and leave this page?')) blocker.proceed(); else blocker.reset();
+  }, [blocker, saving]);
+  useEffect(() => {
+    if (!dirty && !saving) return;
+    const handler = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ''; };
+    window.addEventListener('beforeunload', handler); return () => window.removeEventListener('beforeunload', handler);
+  }, [dirty, saving]);
   useEffect(() => { void auth.restore(); }, []);
   useEffect(() => {
     const id = session.user?.id ?? null;
     if (session.status === 'anonymous') client.clear();
-    else if (previous.current !== null && id !== previous.current) { client.removeQueries({ queryKey: ['career-profile', previous.current] }); client.removeQueries({ queryKey: ['dashboard', previous.current] }); client.removeQueries({ queryKey: ['goals', previous.current] }); client.removeQueries({ queryKey: ['goal', previous.current] }); }
+    else if (previous.current !== null && id !== previous.current) { client.removeQueries({ queryKey: ['career-profile', previous.current] }); client.removeQueries({ queryKey: ['dashboard', previous.current] }); client.removeQueries({ queryKey: ['goals', previous.current] }); client.removeQueries({ queryKey: ['goal', previous.current] }); client.removeQueries({ queryKey: ['subtasks', previous.current] }); }
     previous.current = id;
   }, [session.user?.id, session.status, client]);
   if (session.status === 'loading') return <Loading />;
-  return <DirtyContext.Provider value={{ dirty, setDirty, saving, setSaving }}><a className="skip-link" href="#main-content">Skip to content</a><Routes>
+  return <DirtyContext.Provider value={{ dirty, setDirty, saving, setSaving, registerForm }}><a className="skip-link" href="#main-content">Skip to content</a><Routes>
     <Route path="/login" element={<AuthPage key="login" />} /><Route path="/register" element={<AuthPage key="register" register />} />
     <Route path="/goals" element={<AppShell view="goals" />} /><Route path="/goals/new" element={<AppShell view="new-goal" />} /><Route path="/goals/:goalId" element={<AppShell view="goal-detail" />} /><Route path="/dashboard" element={<AppShell view="dashboard" />} /><Route path="/profile" element={<AppShell view="profile" />} /><Route path="/" element={<Navigate to={session.status === 'authenticated' ? '/dashboard' : '/login'} replace />} />
     <Route path="*" element={<main className="not-found" id="main-content" tabIndex={-1}><Brand /><h1>This page isn’t here.</h1><p>Let’s get you back to your space.</p><Link className="button primary" to="/">Back to CareerOS</Link></main>} />

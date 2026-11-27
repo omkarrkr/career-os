@@ -1,5 +1,7 @@
 export type User = { id: number; name: string; email: string; createdAt: string };
-export type Goal = { id: number; title: string; category: string; description: string | null; status: string; targetDate: string | null; createdAt: string };
+export type Goal = { id: number; title: string; category: string; priority: 'LOW' | 'MEDIUM' | 'HIGH'; description: string | null; status: string; targetDate: string | null; createdAt: string };
+export type Subtask = { id: number; goalId: number; title: string; isCompleted: boolean; createdAt: string; updatedAt: string };
+export type SubtasksResponse = { data: Subtask[]; nextCursor: number | null; summary: { total: number; completed: number } };
 export type GoalResponse = { data: Goal };
 export type GoalListResponse = { data: Goal[]; nextCursor: number | null };
 export type Profile = {

@@ -113,4 +113,12 @@ Goals now has Search goals (title/category/description), Status (All, Active, Co
 
 Filtering runs on the server before pagination. Changing criteria starts at the first page, including when returning to a previously loaded selection. Load more keeps the current criteria. Sorting uses insertion ID, and dates remain UTC. Search text is case-insensitive and literal, at most 100 characters. Search criteria live in component memory; returning from a detail page starts with defaults. Goal mutations invalidate all list-query variants for the account.
 
-The priority/subtask storage migration is prepared and applied, but priority selectors and subtask controls are not yet present. Goal deletion confirmation now explicitly includes subtasks because the database cascades child deletion. Backend/API and screen support follow as a separate verified increment.
+The priority/subtask storage migration is applied; priority selectors and subtask controls are now connected as described below. Goal deletion confirmation now explicitly includes subtasks because the database cascades child deletion. Backend/API and screen support are provided by the following increment.
+
+## Priority and subtasks
+
+Choose Low/Medium/High priority when creating or editing a goal; the saved level appears in its details. The default is Medium. On the detail screen, Subtasks lets you add, rename, check/uncheck and permanently delete smaller steps. Deletion requires confirmation. Completed goals can still manage their steps. Checklist completion is independent from Mark completed on the parent goal.
+
+Whole-goal completed/total counts appear above the list. Pages load 20 at a time, with Load more up to a maximum of 100 subtasks per goal. Save or discard a child draft before using parent goal actions; route changes/sign-out/unload protect drafts. Mutations wait for server confirmation rather than announcing optimistic success. Uncertain failures retain input and require Reload subtasks before another mutation. Criteria and drafts remain in memory only. Concurrent edits to a supplied field use last accepted write wins.
+
+Native verification: test:integration:subtasks requires a fresh empty loopback careeros_test_subtasks_<suffix> database through TEST_DATABASE_URL. It covers parent/child ownership, safe validation, completion independence, paging/summary, concurrent cap enforcement, cascade and session revocation. Never point the test fixture at Supabase.
