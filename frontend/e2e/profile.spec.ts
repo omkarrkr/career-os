@@ -41,6 +41,11 @@ test('login, saved profile, clearing, reload and confirmed sign out', async ({ p
   await page.goto('/profile'); await expect(page.getByRole('heading', { name: 'Good to see you.' })).toBeVisible();
 });
 test('wrong password is safe, does not log in and clears the password input', async ({ page }) => {
+  const toggle = page.getByRole('button', { name: 'Show password', exact: true });
+  await toggle.focus(); await page.keyboard.press('Enter');
+  await expect(page.getByLabel('Password', { exact: true })).toHaveAttribute('type', 'text');
+  await page.getByRole('button', { name: 'Hide password', exact: true }).press('Enter');
+  await expect(page.getByLabel('Password', { exact: true })).toHaveAttribute('type', 'password');
   await page.getByLabel('Email address').fill(email); await page.getByLabel('Password', { exact: true }).fill('Wrong fictional passphrase!');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await expect(page.getByRole('alert')).toContainText('Invalid email or password');
@@ -58,6 +63,12 @@ test('mobile form fits without horizontal overflow and preserves unsaved edits o
   await page.getByRole('button', { name: 'Open navigation' }).click();
   await expect(page.getByRole('navigation', { name: 'Main navigation' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Close navigation', exact: true }).first()).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
+  await expect(page.getByRole('link', { name: 'CareerOS dashboard', exact: true })).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
+  await expect(page.getByRole('navigation', { name: 'Main navigation' }).getByRole('link', { name: 'Career profile', exact: true })).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(page.getByRole('link', { name: 'CareerOS dashboard', exact: true })).toBeFocused();
   await page.keyboard.press('Escape');
   await expect(page.getByRole('button', { name: 'Open navigation' })).toBeFocused();
   await page.getByRole('button', { name: 'Open navigation' }).click();

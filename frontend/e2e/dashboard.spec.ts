@@ -16,6 +16,7 @@ async function signIn(page: Page) {
 }
 test('dashboard shows owned real totals and recent records without exposing the peer',async({page})=>{
   await signIn(page);
+  await expect(page.locator('#main-content')).toBeFocused();
   for(const [label,value] of [['Total goals','2'],['Active goals','1'],['Completed goals','1'],['Overdue goals','0']]) {
     await expect(page.getByRole('article',{name:label,exact:true}).locator('.stat-value')).toHaveText(value);
   }
@@ -25,6 +26,7 @@ test('dashboard shows owned real totals and recent records without exposing the 
 });
 test('profile saves refresh dashboard data and unsaved navigation can be cancelled or discarded',async({page})=>{
   await signIn(page);await page.getByRole('link',{name:'Edit profile',exact:true}).click();
+  await expect(page.locator('#main-content')).toBeFocused();
   await page.getByLabel('Target role',{exact:true}).fill('Cloud engineer');await page.getByRole('button',{name:'Save profile',exact:true}).click();
   await expect(page.getByRole('status')).toContainText('Your profile is saved.');
   await page.getByLabel('Target role',{exact:true}).fill('Unsaved direction');

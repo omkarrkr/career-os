@@ -1,6 +1,6 @@
 # CareerOS frontend
 
-React/TypeScript/Vite, Tailwind, React Router and TanStack Query. The shell includes sign-in, account registration and the private career-profile form. Dashboard, password-change UI, account recovery and hosted deployment remain later steps.
+React/TypeScript/Vite, Tailwind, React Router and TanStack Query. The shell includes sign-in, account registration, the private career-profile form and a real profile/goal dashboard. Password-change UI, account recovery and hosted deployment remain later steps.
 
 ## Run with the real development backend
 
@@ -26,7 +26,7 @@ Optional public configuration is documented in `.env.example`. CAREEROS_API_PROX
 ## Behavior
 
 - Access tokens and identity stay in memory. HttpOnly cookies belong to the backend; localStorage/sessionStorage never store tokens or drafts.
-- Startup renews a cookie session once, verifies the authenticated identity and then opens the profile. Duplicate Strict Mode effects share the same restoration promise.
+- Startup renews a cookie session once, verifies the authenticated identity and then opens the dashboard. Duplicate Strict Mode effects share the same restoration promise.
 - Same-tab renewal is single-flight. Web Locks serialize auth operations across tabs; every refresh obtains the current CSRF token. A network-ambiguous refresh is not retried. Browsers without Web Locks require fresh sign-in rather than unsafe automatic renewal.
 - BroadcastChannel carries session-change notices only, not credentials. Other tabs clear local identity/query data on sign-out/account changes. Generation and renewed-identity checks stop stale requests from applying an old account's edit to another account.
 - Cookie credentials are included only for `/api/auth`; ordinary profile requests omit cookies and use Bearer authentication. A denied protected request may refresh and retry once. There are no automatic retries for network-failed saves or refreshes.
@@ -88,3 +88,7 @@ Setup follows the official [Vite guide](https://vite.dev/guide/), [React Router 
 Sign-in now opens `/dashboard`. DashboardPage reads the account-scoped summary API; profile saves invalidate its query. Recent goals are read-only in this step. No fake trend, readiness score or AI output is displayed. The profile navigation guard allows cancelling or discarding unsaved edits.
 
 For concurrent development and browser tests, use a separate frontend port and `CAREEROS_VITE_CACHE_DIR` for the fixture server. Set `TEST_FRONTEND_ORIGIN` and `E2E_BASE_URL` to that frontend origin. Clear `VITE_API_ORIGIN` for the fixture so API requests go through its isolated proxy. If Vite reports its project lock, its `--bypass-lock` option is only appropriate with this separate test port and cache. The fixture marker must still match before tests run; browser tests abort off-origin API requests. Never point the fixture at Supabase.
+
+## Keyboard accessibility
+
+Screen changes move keyboard focus to the new main content after rendering, including authentication restoration and unknown routes. Focus does not move during ordinary profile edits or dashboard refreshes. The skip link targets this same content. Password visibility controls have explicit Show password/Hide password names. Visible focus styles, labeled inputs, alert/status messages, reduced-motion styles and the mobile drawer remain supported. The drawer keeps Tab/Shift+Tab inside its links and buttons; Escape closes it and restores focus to its opener. These are focused browser checks, not a full assistive-technology or WCAG conformance audit.

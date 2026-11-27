@@ -66,7 +66,7 @@ function AuthPage({ register = false }: { register?: boolean }) {
       <form onSubmit={submit} className="auth-form">
         {register && <div className="auth-field"><label htmlFor="account-name">Full name</label><input id="account-name" name="name" value={name} onChange={event => setName(event.target.value)} autoComplete="name" maxLength={100} required disabled={busy} placeholder="Your name" aria-invalid={!!fieldErrors.name} aria-describedby={fieldErrors.name ? 'name-error' : undefined} />{fieldErrors.name && <span className="field-error" id="name-error">{fieldErrors.name}</span>}</div>}
         <div className="auth-field"><label htmlFor="account-email">Email address</label><input id="account-email" type="email" name="email" value={email} onChange={event => setEmail(event.target.value)} autoComplete="username" maxLength={254} required disabled={busy} placeholder="you@example.com" aria-invalid={!!fieldErrors.email} aria-describedby={fieldErrors.email ? 'email-error' : undefined} />{fieldErrors.email && <span className="field-error" id="email-error">{fieldErrors.email}</span>}</div>
-        <div className="auth-field"><label htmlFor="account-password">Password</label><div className="password-input"><input id="account-password" type={showPassword ? 'text' : 'password'} name="password" value={password} onChange={event => setPassword(event.target.value)} autoComplete={register ? 'new-password' : 'current-password'} required disabled={busy} aria-invalid={!!fieldErrors.password} aria-describedby={fieldErrors.password ? 'password-error' : register ? 'password-hint' : undefined} /><button type="button" onClick={() => setShowPassword(value => !value)} aria-pressed={showPassword} disabled={busy}>{showPassword ? 'Hide' : 'Show'}</button></div>{fieldErrors.password && <span className="field-error" id="password-error">{fieldErrors.password}</span>}</div>
+        <div className="auth-field"><label htmlFor="account-password">Password</label><div className="password-input"><input id="account-password" type={showPassword ? 'text' : 'password'} name="password" value={password} onChange={event => setPassword(event.target.value)} autoComplete={register ? 'new-password' : 'current-password'} required disabled={busy} aria-invalid={!!fieldErrors.password} aria-describedby={fieldErrors.password ? 'password-error' : register ? 'password-hint' : undefined} /><button type="button" onClick={() => setShowPassword(value => !value)} aria-label={showPassword ? 'Hide password' : 'Show password'} aria-pressed={showPassword} disabled={busy}>{showPassword ? 'Hide' : 'Show'}</button></div>{fieldErrors.password && <span className="field-error" id="password-error">{fieldErrors.password}</span>}</div>
         {register && <p className="field-hint" id="password-hint">Use at least 15 characters and at most 72 UTF-8 bytes. Spaces are welcome.</p>}
         <button type="submit" className="button primary auth-submit" disabled={busy}>{busy && <LoaderCircle size={18} className="spin" />}{busy ? (register ? 'Creating account…' : 'Signing in…') : (register ? 'Create your account' : 'Sign in')}</button>
       </form>
@@ -198,6 +198,13 @@ function ProfilePage({ userId }: { userId: number }) {
 
 export function App() {
   const session = useSyncExternalStore(auth.subscribe, auth.getSnapshot);
+  const { pathname } = useLocation();
+  useEffect(() => {
+    if (session.status === 'loading') return;
+    // Wait until route content and drawer cleanup have committed before moving focus.
+    const frame = requestAnimationFrame(() => document.getElementById('main-content')?.focus());
+    return () => cancelAnimationFrame(frame);
+  }, [pathname, session.status]);
   const client = useQueryClient(); const previous = useRef<number | null>(null); const [dirty, setDirty] = useState(false); const [saving, setSaving] = useState(false);
   useEffect(() => { void auth.restore(); }, []);
   useEffect(() => {
@@ -210,6 +217,6 @@ export function App() {
   return <DirtyContext.Provider value={{ dirty, setDirty, saving, setSaving }}><a className="skip-link" href="#main-content">Skip to content</a><Routes>
     <Route path="/login" element={<AuthPage key="login" />} /><Route path="/register" element={<AuthPage key="register" register />} />
     <Route path="/dashboard" element={<AppShell view="dashboard" />} /><Route path="/profile" element={<AppShell view="profile" />} /><Route path="/" element={<Navigate to={session.status === 'authenticated' ? '/dashboard' : '/login'} replace />} />
-    <Route path="*" element={<main className="not-found"><Brand /><h1>This page isn’t here.</h1><p>Let’s get you back to your space.</p><Link className="button primary" to="/">Back to CareerOS</Link></main>} />
+    <Route path="*" element={<main className="not-found" id="main-content" tabIndex={-1}><Brand /><h1>This page isn’t here.</h1><p>Let’s get you back to your space.</p><Link className="button primary" to="/">Back to CareerOS</Link></main>} />
   </Routes></DirtyContext.Provider>;
 }

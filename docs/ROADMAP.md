@@ -122,9 +122,10 @@ Acceptance: two users cannot access each other's resources; existing data is pre
 - [x] Scaffold React/TypeScript/Vite/Tailwind and protected routing.
 - [x] Build registration/login, session-aware navigation and the career-profile form with API integration.
 - [x] Build a real dashboard with owned counts, saved profile and recent goals.
-- [ ] Verify the dashboard workflow with the owner.
+- [x] Verify the dashboard workflow with the owner.
 - [x] Add labeled forms, loading/error/empty/unsaved states and responsive keyboard-aware navigation.
-- [ ] Review remaining accessibility cases and prepare an appropriate deployment preview.
+- [x] Review current keyboard navigation, route focus, mobile focus containment and labeled feedback.
+- [ ] Prepare an appropriate deployment preview.
 
 M3 backend step (27 November): CareerProfile has one unique owner, partial-save validation, explicit null/empty-list clearing and owner-scoped GET/PATCH. Completion lists five core fields and makes no readiness claims. The additive empty-table migration passed fresh scoped backup/restore and native rehearsal; prior goals/account/session values were preserved. RLS denies ordinary direct profile access. Typecheck/build/schema validation, 86 default tests and 38 native integration tests pass (including parents), including two-user isolation, concurrent first saves and application-restart persistence. M3 remains in progress: frontend forms, auth screens, real dashboard, accessibility and preview are not complete.
 
@@ -214,3 +215,5 @@ This phase broadens existing verification; it is not the first time tests or sec
 Working behavior demonstrated; important failure/ownership cases verified; build passes; schema changes reviewed and non-destructive; relevant docs updated; diff and secret exposure reviewed. Explain the feature and architecture before implementation, then provide concise learning notes and an exercise after verification. Advance one verified milestone at a time within the authorized scope.
 
 M3 dashboard step (27 November): owned read API and React dashboard implemented with profile direction, completion checklist, exact-status totals, UTC overdue subset and latest-five goals. Profile saves refresh dashboard data and guarded navigation protects drafts. Validation passed: 89 backend default tests, 6 native PostgreSQL dashboard tests (including parent), 13 frontend unit tests, 9 isolated browser flows and both production builds. The owner previously confirmed real profile save/reload; owner dashboard acceptance, remaining accessibility review and deployment preview remain outstanding. No Supabase schema or records changed in this step.
+
+M3 keyboard review (27 November): route/session transitions focus main content; password visibility has explicit accessible names. Browser assertions cover route focus, keyboard toggles, mobile forward/backward focus containment and Escape restoration alongside existing end-to-end flows. Frontend build, 13 unit tests and 9 fictional local browser flows pass. Owner confirmed all seven real-account walkthrough steps. This completes the focused keyboard review; full assistive-technology conformance is not claimed. Deployment preview is still pending, so M3 remains open.
