@@ -47,6 +47,31 @@ model User {
   goals        Goal[]
   sessions     AuthSession[]
   careerProfile CareerProfile?
+  skills       UserSkill[]
+}
+
+model Skill {
+  id        Int         @id @default(autoincrement())
+  slug      String      @unique @db.VarChar(80)
+  name      String      @db.VarChar(80)
+  category  String      @db.VarChar(80)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  users     UserSkill[]
+}
+
+model UserSkill {
+  userId    Int
+  skillId   Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  skill     Skill    @relation(fields: [skillId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  level     String   @default("BEGINNER") @db.VarChar(12)
+  notes     String?  @db.VarChar(1000)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@id([userId, skillId])
+  @@index([skillId])
 }
 
 model CareerProfile {

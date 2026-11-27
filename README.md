@@ -272,3 +272,5 @@ The Goals list also supports literal case-insensitive search across title/catego
 Priority/subtask database foundation is now applied and verified: existing goals have Medium priority and the private subtask table is ready. API support and frontend controls for these two features are now connected below. Existing goal workflows remain available.
 
 Priority and subtask controls are now connected: set Low/Medium/High priority, then add, rename, check/uncheck and confirmation-delete owned subtasks from goal details. Checklist progress is separate from the goal's completed status. The prior storage migration is reused; this increment needs no new database change.
+
+The skills storage foundation separates a small shared catalog from account-owned self-reported levels and private notes. Skill API and screen controls follow in the next increment; no personal skills are assigned automatically.

@@ -190,3 +190,7 @@ All subtask routes require the existing Bearer token and a live session:
 - DELETE /api/goals/:id/subtasks/:subtaskId: returns 204 after owned deletion; there is no undo. Frontend confirmation is additional UX, independent of backend authorization.
 
 Records select only id, goalId, title, isCompleted, createdAt and updatedAt. GET/POST return Goal not found for unavailable/foreign parents. PATCH/DELETE return identical Subtask not found for missing, foreign or wrong-parent child IDs. Malformed IDs or payloads return safe 400; anonymous/invalid/revoked sessions return 401. Every child mutation includes both parent ID and the relation to the signed-in account in the mutation predicate. Existing rate limits, CORS, no-store and safe-error policies apply. Checking/unchecking/renaming subtasks never changes parent goal status or priority. Completed goals remain editable. No new migration is required in this increment.
+
+## Skills storage stage
+
+A shared Skill catalog and private UserSkill links are being introduced as a storage-only increment. There are no skill endpoints or screen controls in this stage. The catalog contains eight maintained starter labels; no account is assigned personal skills. Future APIs will expose self-reported levels and private notes with session-derived ownership; they must not present those levels as verified proficiency or a job-readiness score. Current goal/subtask/auth/profile endpoints remain unchanged.

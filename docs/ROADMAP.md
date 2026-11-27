@@ -142,7 +142,8 @@ Acceptance: an authenticated user edits their profile and sees persisted real da
 - [x] Add priority/subtask storage through a preserving, backup-verified migration.
 - [x] Connect priority controls and owned subtask APIs/screens.
 - [x] Add goal deadlines, completion and dashboard overdue counts.
-- [ ] Add skill catalog/user proficiency, categories and learning progress.
+- [x] Add shared skill catalog and private account-skill storage with a preserving migration.
+- [ ] Connect owned skill APIs, self-reported levels/private notes and skill screens.
 - [ ] Build connected goal/skill UI and test ownership and progress calculations.
 
 ## Phase 5: projects, certifications and experience
@@ -235,3 +236,7 @@ Storage regression checks: 93 backend default tests, 15 native goal integration 
 M4 execution API/UI increment (27 November): priority accepted on owned goal create/partial update and displayed/edited in forms. Owned subtasks support strict create/rename/explicit check-uncheck/delete APIs, bounded ID-cursor lists with whole-goal counts and a serialized 100-step cap. Goal details connect checklist controls, reload, paging, permanent-deletion confirmation and draft/failure recovery. Completion remains independent from parent status, including completed goals. One shared registry/blocker protects multiple forms and sign-out/session transitions. Missing-row rename drafts remain copyable/discardable. No new migration or dependency; existing storage reused and real Supabase records untouched during tests. Owner acceptance is next; skills/projects and hosted preview remain pending.
 
 Execution verification complete: 95 backend default tests, 24 native database checks (9 subtask/priority plus 15 existing goal checks, including parents), 13 frontend unit tests, 14 browser flows and both production builds pass. Browser coverage includes persisted priority changes, rename/check/uncheck/delete, independent parent completion, completed-goal editing, confirmation cancellation, shared draft protection, uncertain-save recovery, whole-goal counts/paging and missing-row draft recovery. Desktop/mobile checklist layouts and keyboard focus reviewed; no horizontal overflow. All test servers/local PostgreSQL stopped. No new schema/dependency or real Supabase mutation in this increment. Owner acceptance next.
+
+M4 skills storage (28 November): shared Skill catalog with unique bounded slug/name/category and eight maintained starter labels; private UserSkill composite account/skill key, self-reported BEGINNER/INTERMEDIATE/ADVANCED level, optional bounded notes, timestamps and restrictive foreign keys. No personal skills assigned automatically. Both tables have RLS/no direct policies. Fresh scoped backup included all existing tables, including Subtask, and was restored locally; exact migration rehearsal, constraints/privacy and all-row preservation passed before Supabase apply. Live supported-model drift/status and compiled read-only model checks pass. API/screens are the next increment; no readiness scoring is claimed. No dependency change.
+
+Skills storage verification: 97 backend default tests, 24 native existing-goal/subtask checks (including parent counts), 13 frontend unit tests, 14 browser flows and both production builds passed. Fresh backup/native restore/exact-SQL rehearsal, live migration status/model checks and compiled read-only model queries passed. Test servers/local PostgreSQL stopped. These checks verify storage and existing workflows; skill endpoints/screens are still next.
