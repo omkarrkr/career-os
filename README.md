@@ -268,3 +268,5 @@ The Goals screen now supports viewing paginated owned goals, creating a goal and
 Goal details now also support partial editing, marking completed and permanent deletion with confirmation. Successful changes refresh owned list/dashboard data. Database-level ownership predicates and two-user mutation tests cover these endpoints; no new schema is needed.
 
 The Goals list also supports literal case-insensitive search across title/category/description, status filters and oldest/newest-added sorting. Filtering happens before pagination on the backend; changing criteria starts a fresh first page.
+
+Priority/subtask database foundation is now applied and verified: existing goals have Medium priority and the private subtask table is ready. API support and frontend controls for these two features are still the next increment. Existing goal workflows remain available.

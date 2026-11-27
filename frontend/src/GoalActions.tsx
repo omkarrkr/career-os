@@ -53,7 +53,7 @@ export function GoalActions({ goal, userId, reload }: { goal: Goal; userId: numb
     if (Object.keys(body).length) void patch(body, 'Goal updated.');
   };
   const remove = async () => {
-    if (busy || uncertain || !window.confirm(`Permanently delete “${goal.title}”? This cannot be undone.`)) return;
+    if (busy || uncertain || !window.confirm(`Permanently delete “${goal.title}” and its subtasks? This cannot be undone.`)) return;
     setBusy(true); setError(''); setSuccess('');
     try {
       await auth.api<void>(`/api/goals/${goal.id}`, { method: 'DELETE' });

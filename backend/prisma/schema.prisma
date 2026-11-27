@@ -19,8 +19,22 @@ model Goal {
   createdAt   DateTime @default(now())
   userId      Int
   user        User     @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  priority    String   @default("MEDIUM") @db.VarChar(6)
+  subtasks    Subtask[]
 
   @@index([userId])
+}
+
+model Subtask {
+  id          Int      @id @default(autoincrement())
+  goalId      Int
+  goal        Goal     @relation(fields: [goalId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  title       String   @db.VarChar(200)
+  isCompleted Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([goalId, id])
 }
 
 model User {
