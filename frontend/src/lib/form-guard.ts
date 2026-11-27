@@ -5,7 +5,7 @@ export const DirtyContext = createContext({ dirty: false, setDirty: (_value: boo
 
 export function useFormGuard(dirty: boolean, saving: boolean) {
   const { setDirty, setSaving } = useContext(DirtyContext);
-  const blocker = useBlocker(({ currentLocation, nextLocation }) => dirty && currentLocation.pathname !== nextLocation.pathname);
+  const blocker = useBlocker(({ currentLocation, nextLocation }) => (dirty || saving) && currentLocation.pathname !== nextLocation.pathname);
   const prompted = useRef<object | null>(null);
   useEffect(() => {
     if (blocker.state !== 'blocked') { prompted.current = null; return; }
@@ -17,9 +17,9 @@ export function useFormGuard(dirty: boolean, saving: boolean) {
   useEffect(() => { setDirty(dirty); return () => setDirty(false); }, [dirty, setDirty]);
   useEffect(() => { setSaving(saving); return () => setSaving(false); }, [saving, setSaving]);
   useEffect(() => {
-    if (!dirty) return;
+    if (!dirty && !saving) return;
     const handler = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ''; };
     window.addEventListener('beforeunload', handler);
     return () => window.removeEventListener('beforeunload', handler);
-  }, [dirty]);
+  }, [dirty, saving]);
 }

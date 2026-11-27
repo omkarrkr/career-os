@@ -69,7 +69,7 @@ test("allowed preflight returns permitted methods/headers without invoking a rou
         });
         assert.equal(response.status, 204);
         assert.equal(response.headers.get("access-control-allow-origin"), allowedOrigin);
-        assert.equal(response.headers.get("access-control-allow-methods"), "GET,POST,PATCH");
+        assert.equal(response.headers.get("access-control-allow-methods"), "GET,POST,PATCH,DELETE");
         assert.match(response.headers.get("access-control-allow-headers"), /Authorization/i);
         assert.equal(response.headers.get("access-control-max-age"), "600");
     });

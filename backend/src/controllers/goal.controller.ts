@@ -1,6 +1,6 @@
 import type { Request, Response } from "express";
-import { createGoal, listGoals, getGoal } from "../services/goal.service.js";
-import { createGoalSchema, goalIdSchema, listGoalsSchema } from "../schemas/goal.schema.js";
+import { createGoal, listGoals, getGoal, updateGoal, deleteGoal } from "../services/goal.service.js";
+import { createGoalSchema, goalIdSchema, listGoalsSchema, updateGoalSchema } from "../schemas/goal.schema.js";
 import { invalidSession } from "../utils/auth-tokens.js";
 import { ApiError } from "../utils/api-error.js";
 
@@ -22,6 +22,27 @@ export const getGoalController = async (req: Request, res: Response) => {
     const goal = await getGoal(ownerId(res), parsed.data);
     if (!goal) throw new ApiError(404, "Goal not found");
     res.json({ data: goal });
+};
+
+export const updateGoalController = async (req: Request, res: Response) => {
+    const id = goalIdSchema.safeParse(req.params.id);
+    if (!id.success) throw new ApiError(400, "Invalid goal ID");
+    const parsed = updateGoalSchema.safeParse(req.body);
+    if (!parsed.success) {
+        res.status(400).json({ message: "Invalid goal data", errors: parsed.error.issues.map(issue => ({ field: issue.path.join(".") || "body", message: issue.message })) });
+        return;
+    }
+    const goal = await updateGoal(ownerId(res), id.data, parsed.data);
+    if (!goal) throw new ApiError(404, "Goal not found");
+    res.json({ data: goal });
+};
+
+export const deleteGoalController = async (req: Request, res: Response) => {
+    const id = goalIdSchema.safeParse(req.params.id);
+    if (!id.success) throw new ApiError(400, "Invalid goal ID");
+    const result = await deleteGoal(ownerId(res), id.data);
+    if (!result.count) throw new ApiError(404, "Goal not found");
+    res.sendStatus(204);
 };
 
 export const createGoalController = async (

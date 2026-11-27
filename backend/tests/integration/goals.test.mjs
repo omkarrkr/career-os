@@ -38,8 +38,8 @@ test("goal ownership and direct-role isolation with native PostgreSQL", { skip: 
         ({ default: prisma } = await import("../../src/config/prisma.ts"));
         server = app.listen(0, "127.0.0.1"); await once(server, "listening");
         const base = `http://127.0.0.1:${server.address().port}/api/goals`;
-        const request = (path = "", token, body) => fetch(base + path, {
-            method: body === undefined ? "GET" : "POST",
+        const request = (path = "", token, body, method = body === undefined ? "GET" : "POST") => fetch(base + path, {
+            method,
             headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(body ? { "Content-Type": "application/json" } : {}) },
             ...(body === undefined ? {} : { body: JSON.stringify(body) }),
         });
@@ -96,10 +96,53 @@ test("goal ownership and direct-role isolation with native PostgreSQL", { skip: 
                 const response = await request(path, tokens[0]); assert.equal(response.status, 400, path); await response.arrayBuffer();
             }
         });
+        await t.test("anonymous and other accounts cannot update or delete owned goals", async () => {
+            const before = (await db.query('SELECT * FROM "Goal" WHERE id=$1', [a.id])).rows[0];
+            for (const method of ['PATCH', 'DELETE']) {
+                assert.equal((await request(`/${a.id}`, undefined, method === 'PATCH' ? { title: 'Denied' } : undefined, method)).status, 401);
+                const response = await request(`/${a.id}`, tokens[1], method === 'PATCH' ? { title: 'Denied' } : undefined, method);
+                assert.equal(response.status, 404); assert.deepEqual(await response.json(), { message: 'Goal not found' });
+                assert.equal((await request('/2147483647', tokens[1], method === 'PATCH' ? { title: 'Denied' } : undefined, method)).status, 404);
+                assert.equal((await request('/invalid', tokens[0], method === 'PATCH' ? { title: 'Denied' } : undefined, method)).status, 400);
+            }
+            assert.deepEqual((await db.query('SELECT * FROM "Goal" WHERE id=$1', [a.id])).rows[0], before);
+        });
+        await t.test("partial updates reject empty, invalid and owner-spoofing payloads without changing data", async () => {
+            const before = (await db.query('SELECT * FROM "Goal" WHERE id=$1', [a.id])).rows[0];
+            for (const body of [{}, [], null, { title: ' ' }, { category: null }, { description: 2 }, { targetDate: 'bad' }, { status: 'DONE' }, { userId: users[1].id }, { title: 'Changed', id: 123 }]) {
+                assert.equal((await request(`/${a.id}`, tokens[0], body, 'PATCH')).status, 400);
+            }
+            assert.deepEqual((await db.query('SELECT * FROM "Goal" WHERE id=$1', [a.id])).rows[0], before);
+        });
+        await t.test("edits preserve omitted fields and permit explicit null clearing", async () => {
+            const first = await request(`/${a.id}`, tokens[0], { title: '  Edited goal  ', description: 'Details', targetDate: '2030-06-15' }, 'PATCH');
+            assert.equal(first.status, 200); const saved = (await first.json()).data;
+            assert.equal(saved.title, 'Edited goal'); assert.equal(saved.userId, users[0].id); assert.equal(saved.category, a.category);
+            assert.equal(saved.targetDate, '2030-06-15T00:00:00.000Z'); assert.equal(saved.createdAt, a.createdAt);
+            const second = await request(`/${a.id}`, tokens[0], { description: null, targetDate: null }, 'PATCH');
+            assert.equal(second.status, 200); const cleared = (await second.json()).data;
+            assert.equal(cleared.description, null); assert.equal(cleared.targetDate, null); assert.equal(cleared.title, 'Edited goal'); assert.equal(cleared.status, 'ACTIVE');
+        });
+        await t.test("completion updates dashboard counts and repeating the assignment creates no records", async () => {
+            const count = (await db.query('SELECT COUNT(*)::int AS n FROM "Goal"')).rows[0].n;
+            for (let n=0; n<2; n++) { const response = await request(`/${a.id}`, tokens[0], { status: 'COMPLETED' }, 'PATCH'); assert.equal(response.status, 200); assert.equal((await response.json()).data.status, 'COMPLETED'); }
+            assert.equal((await db.query('SELECT COUNT(*)::int AS n FROM "Goal"')).rows[0].n, count);
+            const dashboard = await fetch(base.replace('/api/goals', '/api/users/dashboard'), { headers: { Authorization: `Bearer ${tokens[0]}` } });
+            const { data } = await dashboard.json(); assert.equal(data.goals.completed, 1); assert.equal(data.goals.overdue, 0);
+        });
+        await t.test("owned deletion removes only the selected goal and returns 404 on later reads/deletes", async () => {
+            const other = (await db.query('SELECT * FROM "Goal" WHERE id=$1', [b.id])).rows[0];
+            const deleted = await request(`/${a.id}`, tokens[0], undefined, 'DELETE'); assert.equal(deleted.status, 204); assert.equal(await deleted.text(), '');
+            assert.equal((await request(`/${a.id}`, tokens[0])).status, 404);
+            assert.equal((await request(`/${a.id}`, tokens[0], undefined, 'DELETE')).status, 404);
+            assert.deepEqual((await db.query('SELECT * FROM "Goal" WHERE id=$1', [b.id])).rows[0], other);
+        });
         await t.test("revocation denies goal operations despite a valid signed token", async () => {
             await db.query('UPDATE "AuthSession" SET "revokedAt"=$2 WHERE id=$1', [sessions[1], new Date().toISOString()]);
             assert.equal((await request("", tokens[1])).status, 401);
             assert.equal((await request("", tokens[1], { title: "Denied", category: "Development" })).status, 401);
+            assert.equal((await request(`/${b.id}`, tokens[1], { status: 'COMPLETED' }, 'PATCH')).status, 401);
+            assert.equal((await request(`/${b.id}`, tokens[1], undefined, 'DELETE')).status, 401);
         });
         await t.test("RLS denies ordinary direct-role reads/writes even with explicit table grants", async () => {
             const role = `goal_test_${randomUUID().replaceAll("-", "")}`;

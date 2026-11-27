@@ -6,6 +6,7 @@ import { auth } from './lib/auth';
 import { ApiError } from './lib/auth-client';
 import { useFormGuard } from './lib/form-guard';
 import type { GoalListResponse, GoalResponse } from './lib/types';
+import { GoalActions } from './GoalActions';
 
 const dateLabel = (value: string) => new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }).format(new Date(value));
 const statusLabel = (value: string) => value === 'ACTIVE' ? 'Active' : value === 'COMPLETED' ? 'Completed' : value;
@@ -48,6 +49,7 @@ export function GoalDetailPage({ userId }: { userId: number }) {
       <span className="goal-status">{statusLabel(goal.status)}</span><h2>{goal.title}</h2><p className="goal-category">{goal.category}</p>
       <dl className="education-summary"><div><dt>Created</dt><dd>{dateLabel(goal.createdAt)}</dd></div><div><dt>Target date</dt><dd>{goal.targetDate ? `${dateLabel(goal.targetDate)} (UTC)` : 'No target date'}</dd></div></dl>
       <h3>Description</h3><p className="goal-description">{goal.description?.trim() ? goal.description : 'No description added.'}</p>
+      <GoalActions key={goal.id} goal={goal} userId={userId} reload={async () => { const result = await query.refetch(); if (result.error) throw result.error; return result.data!; }} />
     </section>}<Footer />
   </main>;
 }

@@ -137,7 +137,8 @@ Acceptance: an authenticated user edits their profile and sees persisted real da
 
 - [x] Add owned goal list/detail and bounded cursor pagination.
 - [x] Build owned goal list/create/detail screens with pagination, draft protection and dashboard links.
-- [ ] Add owned goal update/delete and search/filter/sort.
+- [x] Add owned goal editing, completion and confirmation-protected deletion APIs/screens.
+- [ ] Add goal search/filter/sort.
 - [ ] Add priorities, deadlines, subtasks, completion and overdue views.
 - [ ] Add skill catalog/user proficiency, categories and learning progress.
 - [ ] Build connected goal/skill UI and test ownership and progress calculations.
@@ -220,3 +221,5 @@ M3 dashboard step (27 November): owned read API and React dashboard implemented 
 M3 keyboard review (27 November): route/session transitions focus main content; password visibility has explicit accessible names. Browser assertions cover route focus, keyboard toggles, mobile forward/backward focus containment and Escape restoration alongside existing end-to-end flows. Frontend build, 13 unit tests and 9 fictional local browser flows pass. Owner confirmed all seven real-account walkthrough steps. This completes the focused keyboard review; full assistive-technology conformance is not claimed. Deployment preview is still pending, so M3 remains open.
 
 M4 Goals frontend increment (27 November): protected list, create and read-only detail screens use the existing owned APIs. Lists load 20 records at a time; optional descriptions/dates, validation, empty/error/retry states, draft protection and dashboard links/cache refresh are connected. Uncertain creation failures retain input and prevent blind duplicate submissions. Verified: frontend production build, 13 frontend unit tests, 10 browser flows (including Goals create/reload/isolation/pagination/mobile/failure steps), and 89 backend default tests. Final browser run has no fixture initialization warnings. Fictional local test servers/database stopped gracefully. No production API/schema/dependency changes or real Supabase writes. Owner Goals acceptance, goal editing/completion/deletion, skills/projects and deployment preview remain pending.
+
+M4 goal mutation increment (27 November): strict partial PATCH, explicit optional-field clearing, completion assignment and owner-scoped DELETE added. Goal details provide edit forms, completion and permanent-deletion confirmation; confirmed results refresh list/dashboard data. Unknown outcomes retain drafts and require a saved read before more mutations. Native tests cover anonymous/foreign/revoked denial, bad payloads, ownership preservation, clearing, repeated completion, counts and deletion isolation. Verified: 90 backend default tests, 14 native goal integration checks (including parent), 13 frontend unit tests, 12 isolated browser flows and both production builds. Desktop/mobile edit layout reviewed. No schema/dependency change or real Supabase test mutation. Owner acceptance of these changes is next; goal search/filter/sort, subtasks/priorities, skills/projects and deployment preview remain pending.

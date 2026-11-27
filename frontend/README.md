@@ -100,3 +100,9 @@ Use Goals in the sidebar, or View all goals on the dashboard. `/goals` lists own
 Creation is not retried automatically. If a network/server failure makes the result uncertain, input remains visible and another submission is disabled until the user checks saved goals and starts a fresh form. Leaving a draft asks for confirmation. Editing, completion and deletion follow in a later increment. The browser fixture uses fictional records; never run it against Supabase.
 
 Browser fixture isolation: each spec verifies the marker and uses a nonce-checked test-only new-suite endpoint to select an unused Express app prebuilt before startup, resetting in-memory rate counters while keeping fictional database records/sessions. Missing nonce returns 403. This endpoint exists only in the guarded loopback test entry point, never the production application. Run specs sequentially (workers=1); create a fresh empty database for a new fixture run. Production request/login limits are unchanged.
+
+## Editing, completion and deletion
+
+Open a goal's details to edit title/category/description/target date, mark it completed, or delete it. Editing sends only changed fields; clearing optional fields removes those saved values. Cancel editing and navigation protect unsaved drafts. Completion and successful saves refresh list/dashboard queries. Delete goal asks for confirmation naming the goal and explaining that deletion is permanent. Cancel sends no delete request. No undo is available.
+
+Network/server failures do not falsely report success. Saved details can be reloaded while keeping an edit draft; an uncertain outcome blocks further changes until that read succeeds. Backend ownership checks apply independently to every PATCH/DELETE. The current UI offers completion; the API also accepts ACTIVE as an explicit status assignment. Concurrent same-field edits are last accepted write wins.

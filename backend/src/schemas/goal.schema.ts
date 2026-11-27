@@ -26,3 +26,9 @@ export const createGoalSchema = z.object({
         .refine((value) => Number.isFinite(Date.parse(value)), "Target date is invalid")
         .optional(),
 });
+
+export const updateGoalSchema = createGoalSchema.partial().extend({
+    description: createGoalSchema.shape.description.unwrap().nullable().optional(),
+    targetDate: createGoalSchema.shape.targetDate.unwrap().nullable().optional(),
+    status: z.enum(["ACTIVE", "COMPLETED"]).optional(),
+}).strict().refine(value => Object.values(value).some(field => field !== undefined), "Provide at least one goal field");

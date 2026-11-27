@@ -152,3 +152,7 @@ nav a[aria-disabled="true"] { opacity: .6; cursor: wait; }
 .goals-empty .button { margin-top: 22px; }
 @media(max-width:640px) { .goals-panel { padding: 21px 18px; }.goal-field input,.goal-field textarea { font-size: 16px; }.goal-list-title { font-size: 17px; } }
 .goal-title-link { color: #176e69; }
+.goal-actions { margin-top: 30px; }
+.goal-actions .goal-form { margin-top: 25px; }
+.button.danger { color: #943b30; background: #fff3f0; border: 1px solid #dba89f; }
+.button.danger:hover { background: #ffe5df; }
