@@ -1,14 +1,9 @@
+import { startFixtureSuite } from './fixture';
 import { test, expect } from '@playwright/test';
 const email = 'ui-student@example.test';
 const password = 'Fictional browser test passphrase!';
 // The harness must provide a disposable native PostgreSQL backend, never Supabase.
-test.beforeAll(async ({ request }) => {
-  const key = process.env.E2E_FIXTURE_KEY;
-  if (!key) throw new Error('Refusing browser writes without E2E_FIXTURE_KEY and the isolated backend browser fixture.');
-  const response = await request.get('/api/__local_fixture__');
-  expect(response.ok()).toBe(true);
-  expect((await response.json()).fixtureKey).toBe(key);
-});
+test.beforeAll(async ({ request }) => { await startFixtureSuite(request); });
 test.beforeEach(async ({ page, context, baseURL }) => {
   const allowed = new URL(baseURL!).origin;
   await context.route('**/api/**', route => new URL(route.request().url()).origin === allowed ? route.continue() : route.abort());
@@ -66,7 +61,7 @@ test('mobile form fits without horizontal overflow and preserves unsaved edits o
   await page.keyboard.press('Shift+Tab');
   await expect(page.getByRole('link', { name: 'CareerOS dashboard', exact: true })).toBeFocused();
   await page.keyboard.press('Shift+Tab');
-  await expect(page.getByRole('navigation', { name: 'Main navigation' }).getByRole('link', { name: 'Career profile', exact: true })).toBeFocused();
+  await expect(page.getByRole('navigation', { name: 'Main navigation' }).getByRole('link', { name: 'Goals', exact: true })).toBeFocused();
   await page.keyboard.press('Tab');
   await expect(page.getByRole('link', { name: 'CareerOS dashboard', exact: true })).toBeFocused();
   await page.keyboard.press('Escape');

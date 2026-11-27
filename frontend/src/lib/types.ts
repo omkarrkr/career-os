@@ -1,4 +1,7 @@
 export type User = { id: number; name: string; email: string; createdAt: string };
+export type Goal = { id: number; title: string; category: string; description: string | null; status: string; targetDate: string | null; createdAt: string };
+export type GoalResponse = { data: Goal };
+export type GoalListResponse = { data: Goal[]; nextCursor: number | null };
 export type Profile = {
   userId: number; institution: string | null; degree: string | null; graduationYear: number | null;
   targetRole: string | null; weeklyLearningHours: number | null; interests: string[]; bio: string | null;

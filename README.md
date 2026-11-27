@@ -260,3 +260,7 @@ ISC
 ## Dashboard milestone
 
 The authenticated landing page is now `/dashboard`, with owned goal counts, the five newest goals, saved career direction and the core-field completion checklist. `/profile` remains editable; successful saves refresh the next dashboard visit. The owner has confirmed real profile save/reload persistence. Dashboard owner acceptance, remaining accessibility review and deployment preview are still pending.
+
+## Goals frontend
+
+The Goals screen now supports viewing paginated owned goals, creating a goal and opening read-only details. Dashboard links open the list and individual records. Editing, completing and deleting goals remain later work. The screen uses existing backend APIs and requires no schema change.

@@ -136,6 +136,7 @@ Acceptance: an authenticated user edits their profile and sees persisted real da
 ## Phase 4: goals, tasks and skills
 
 - [x] Add owned goal list/detail and bounded cursor pagination.
+- [x] Build owned goal list/create/detail screens with pagination, draft protection and dashboard links.
 - [ ] Add owned goal update/delete and search/filter/sort.
 - [ ] Add priorities, deadlines, subtasks, completion and overdue views.
 - [ ] Add skill catalog/user proficiency, categories and learning progress.
@@ -217,3 +218,5 @@ Working behavior demonstrated; important failure/ownership cases verified; build
 M3 dashboard step (27 November): owned read API and React dashboard implemented with profile direction, completion checklist, exact-status totals, UTC overdue subset and latest-five goals. Profile saves refresh dashboard data and guarded navigation protects drafts. Validation passed: 89 backend default tests, 6 native PostgreSQL dashboard tests (including parent), 13 frontend unit tests, 9 isolated browser flows and both production builds. The owner previously confirmed real profile save/reload; owner dashboard acceptance, remaining accessibility review and deployment preview remain outstanding. No Supabase schema or records changed in this step.
 
 M3 keyboard review (27 November): route/session transitions focus main content; password visibility has explicit accessible names. Browser assertions cover route focus, keyboard toggles, mobile forward/backward focus containment and Escape restoration alongside existing end-to-end flows. Frontend build, 13 unit tests and 9 fictional local browser flows pass. Owner confirmed all seven real-account walkthrough steps. This completes the focused keyboard review; full assistive-technology conformance is not claimed. Deployment preview is still pending, so M3 remains open.
+
+M4 Goals frontend increment (27 November): protected list, create and read-only detail screens use the existing owned APIs. Lists load 20 records at a time; optional descriptions/dates, validation, empty/error/retry states, draft protection and dashboard links/cache refresh are connected. Uncertain creation failures retain input and prevent blind duplicate submissions. Verified: frontend production build, 13 frontend unit tests, 10 browser flows (including Goals create/reload/isolation/pagination/mobile/failure steps), and 89 backend default tests. Final browser run has no fixture initialization warnings. Fictional local test servers/database stopped gracefully. No production API/schema/dependency changes or real Supabase writes. Owner Goals acceptance, goal editing/completion/deletion, skills/projects and deployment preview remain pending.

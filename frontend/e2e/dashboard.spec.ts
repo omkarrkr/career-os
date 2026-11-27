@@ -1,9 +1,6 @@
+import { startFixtureSuite } from './fixture';
 import { expect, test, type Page } from '@playwright/test';
-test.beforeAll(async ({ request }) => {
-  const key=process.env.E2E_FIXTURE_KEY;
-  if(!key)throw Error('Isolated browser fixture is required');
-  const response=await request.get('/api/__local_fixture__');expect(response.ok()).toBe(true);expect((await response.json()).fixtureKey).toBe(key);
-});
+test.beforeAll(async ({ request }) => { await startFixtureSuite(request); });
 test.beforeEach(async ({ context, baseURL }) => {
   const allowed=new URL(baseURL!).origin;
   await context.route('**/api/**',route=>new URL(route.request().url()).origin===allowed?route.continue():route.abort());

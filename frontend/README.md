@@ -92,3 +92,11 @@ For concurrent development and browser tests, use a separate frontend port and `
 ## Keyboard accessibility
 
 Screen changes move keyboard focus to the new main content after rendering, including authentication restoration and unknown routes. Focus does not move during ordinary profile edits or dashboard refreshes. The skip link targets this same content. Password visibility controls have explicit Show password/Hide password names. Visible focus styles, labeled inputs, alert/status messages, reduced-motion styles and the mobile drawer remain supported. The drawer keeps Tab/Shift+Tab inside its links and buttons; Escape closes it and restores focus to its opener. These are focused browser checks, not a full assistive-technology or WCAG conformance audit.
+
+## Goals screens
+
+Use Goals in the sidebar, or View all goals on the dashboard. `/goals` lists owned records oldest first, 20 per page with Load more. `/goals/new` accepts title (200 characters), category (100), optional description (5,000) and optional UTC calendar target date. New goals use the backend default Active status. `/goals/:goalId` opens read-only details; inaccessible/invalid IDs reveal no other account's records. Confirmed creation refreshes list/dashboard data; the new record survives reload.
+
+Creation is not retried automatically. If a network/server failure makes the result uncertain, input remains visible and another submission is disabled until the user checks saved goals and starts a fresh form. Leaving a draft asks for confirmation. Editing, completion and deletion follow in a later increment. The browser fixture uses fictional records; never run it against Supabase.
+
+Browser fixture isolation: each spec verifies the marker and uses a nonce-checked test-only new-suite endpoint to select an unused Express app prebuilt before startup, resetting in-memory rate counters while keeping fictional database records/sessions. Missing nonce returns 403. This endpoint exists only in the guarded loopback test entry point, never the production application. Run specs sequentially (workers=1); create a fresh empty database for a new fixture run. Production request/login limits are unchanged.

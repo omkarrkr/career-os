@@ -135,3 +135,20 @@ nav a[aria-disabled="true"] { opacity: .6; cursor: wait; }
 @media(max-width:1100px) { .dashboard-stats { gap: 12px; }.stat-card { padding: 17px; }.dashboard-grid { gap: 18px; }.direction-panel,.recent-goals-panel { padding: 21px; }.education-summary div { grid-template-columns: 1fr; gap: 4px; } }
 @media(max-width:880px) { .dashboard-stats { grid-template-columns: 1fr 1fr; }.dashboard-grid { grid-template-columns: 1fr; }.education-summary div { grid-template-columns: 115px 1fr; } }
 @media(max-width:640px) { .dashboard-main .page-intro { flex-direction: column; gap: 20px; }.dashboard-refresh { align-self: flex-start; }.dashboard-stats { gap: 12px; }.stat-card { padding: 16px; }.stat-label { font-size: 14px; align-items: start; }.stat-value { font-size: 32px; }.direction-panel,.recent-goals-panel { padding: 21px 18px; }.goal-title-row { flex-direction: column; gap: 7px; }.goal-status { max-width: 100%; }.education-summary div { grid-template-columns: 1fr; }.dashboard-section-heading { flex-wrap: wrap; }.dashboard-footnote { font-size: 12px; } }
+
+.goals-panel { padding: 26px; min-width: 0; }
+.goal-list-title { font-size: 18px; margin: 0; overflow-wrap: anywhere; }
+.goal-list-title a { display: inline-flex; align-items: center; gap: 12px; color: #176e69; }
+.goal-list-title svg { flex-shrink: 0; }
+.load-goals { margin-top: 24px; }
+.back-link { display: inline-flex; align-items: center; gap: 8px; color: #176e69; margin-bottom: 22px; }
+.goal-detail h2 { margin-top: 22px; overflow-wrap: anywhere; }
+.goal-description { white-space: pre-wrap; overflow-wrap: anywhere; }
+.goal-form { max-width: 850px; }
+.goal-form fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+.goal-field { display: grid; gap: 9px; margin-bottom: 24px; }
+.goal-field input, .goal-field textarea { width: 100%; min-width: 0; }
+.goal-form-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 18px; border-top: 1px solid #e5edef; padding-top: 22px; }
+.goals-empty .button { margin-top: 22px; }
+@media(max-width:640px) { .goals-panel { padding: 21px 18px; }.goal-field input,.goal-field textarea { font-size: 16px; }.goal-list-title { font-size: 17px; } }
+.goal-title-link { color: #176e69; }

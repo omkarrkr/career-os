@@ -1,14 +1,15 @@
-import { createContext, useContext, useEffect, useRef, useState, useSyncExternalStore, type FormEvent } from 'react';
+import { useContext, useEffect, useRef, useState, useSyncExternalStore, type FormEvent } from 'react';
 import { Link, Navigate, Route, Routes, useLocation, useNavigate, useBlocker } from 'react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowUpRight, BookOpen, Check, CheckCircle2, ChevronRight, Compass, GraduationCap, Leaf, LoaderCircle, LogOut, Menu, LayoutDashboard, ShieldCheck, Sparkles, Target, X } from 'lucide-react';
 import { auth } from './lib/auth';
 import { DashboardPage } from './DashboardPage';
+import { GoalsPage, NewGoalPage, GoalDetailPage } from './GoalsPage';
+import { DirtyContext } from './lib/form-guard';
 import { ApiError } from './lib/auth-client';
 import { buildPatch, emptyForm, toForm, type FormValues } from './lib/profile-form';
 import type { CoreField, ProfileResponse } from './lib/types';
 
-const DirtyContext = createContext({ dirty: false, setDirty: (_value: boolean) => {}, saving: false, setSaving: (_value: boolean) => {} });
 const labels: Record<CoreField, string> = { institution: 'Your institution', degree: 'Degree or programme', graduationYear: 'Graduation year', targetRole: 'Target role', weeklyLearningHours: 'Weekly learning time' };
 function Brand({ light = false }: { light?: boolean }) {
   return <span className={`brand ${light ? 'brand-light' : ''}`}><span className="brand-mark"><Compass size={23} strokeWidth={1.6} /></span>Career<span className="brand-os">OS</span></span>;
@@ -76,7 +77,7 @@ function AuthPage({ register = false }: { register?: boolean }) {
   </main>;
 }
 
-function AppShell({ view }: { view: 'dashboard' | 'profile' }) {
+function AppShell({ view }: { view: 'dashboard' | 'profile' | 'goals' | 'new-goal' | 'goal-detail' }) {
   const session = useSyncExternalStore(auth.subscribe, auth.getSnapshot);
   const { dirty, saving } = useContext(DirtyContext);
   const [signingOut, setSigningOut] = useState(false); const [logoutError, setLogoutError] = useState(''); const [menu, setMenu] = useState(false);
@@ -99,7 +100,7 @@ function AppShell({ view }: { view: 'dashboard' | 'profile' }) {
   if (session.status !== 'authenticated' || !session.user) return <Navigate to="/login" replace />;
   const user = session.user;
   const logout = async () => {
-    if (dirty && !window.confirm('Discard your unsaved profile changes and sign out?')) return;
+    if (dirty && !window.confirm('Discard your unsaved changes and sign out?')) return;
     setSigningOut(true); setLogoutError('');
     try { await auth.logout(); } catch (cause) { setLogoutError(cause instanceof Error ? cause.message : 'Could not confirm sign out.'); }
     finally { setSigningOut(false); }
@@ -108,14 +109,14 @@ function AppShell({ view }: { view: 'dashboard' | 'profile' }) {
     <aside id="career-navigation" ref={sidebarRef} role={menu ? 'dialog' : undefined} aria-modal={menu || undefined} aria-label={menu ? 'Workspace navigation' : undefined} className={`sidebar ${menu ? 'sidebar-open' : ''}`}>
       <div className="sidebar-brand"><Link to="/dashboard" aria-label="CareerOS dashboard" aria-disabled={saving} onClick={event => { if (saving) event.preventDefault(); }}><Brand light /></Link><button className="icon-button close-menu" aria-label="Close navigation" onClick={() => setMenu(false)}><X size={22} /></button></div>
       <div className="workspace-caption">YOUR WORKSPACE</div>
-      <nav aria-label="Main navigation"><Link className={view === 'dashboard' ? 'nav-active' : ''} aria-current={view === 'dashboard' ? 'page' : undefined} to="/dashboard" aria-disabled={saving} onClick={event => { if (saving) event.preventDefault(); else setMenu(false); }}><LayoutDashboard size={20} />Dashboard{view === 'dashboard' && <span className="nav-line" />}</Link><Link className={view === 'profile' ? 'nav-active' : ''} aria-current={view === 'profile' ? 'page' : undefined} to="/profile" aria-disabled={saving} onClick={event => { if (saving) event.preventDefault(); else setMenu(false); }}><Compass size={20} />Career profile{view === 'profile' && <span className="nav-line" />}</Link></nav>
+      <nav aria-label="Main navigation"><Link className={view === 'dashboard' ? 'nav-active' : ''} aria-current={view === 'dashboard' ? 'page' : undefined} to="/dashboard" aria-disabled={saving} onClick={event => { if (saving) event.preventDefault(); else setMenu(false); }}><LayoutDashboard size={20} />Dashboard{view === 'dashboard' && <span className="nav-line" />}</Link><Link className={view === 'profile' ? 'nav-active' : ''} aria-current={view === 'profile' ? 'page' : undefined} to="/profile" aria-disabled={saving} onClick={event => { if (saving) event.preventDefault(); else setMenu(false); }}><Compass size={20} />Career profile{view === 'profile' && <span className="nav-line" />}</Link><Link className={view.includes('goal') ? 'nav-active' : ''} aria-current={view.includes('goal') ? 'page' : undefined} to="/goals" aria-disabled={saving} onClick={event => { if (saving) event.preventDefault(); else setMenu(false); }}><Target size={20} />Goals{view.includes('goal') && <span className="nav-line" />}</Link></nav>
       <div className="sidebar-note"><span className="sidebar-note-icon"><Sparkles size={21} /></span><h3>A strong start.</h3><p>Your background and direction are the foundation for what comes next.</p></div>
       <div className="sidebar-bottom"><span className="avatar">{user.name.trim().slice(0, 1).toUpperCase()}</span><div><strong>{user.name}</strong><span>Personal workspace</span></div></div>
     </aside>
     {menu && <button className="menu-backdrop" aria-label="Close navigation" onClick={() => setMenu(false)} />}
-    <div className="main-shell" inert={menu}><header className="topbar"><div className="breadcrumbs"><button ref={menuButtonRef} className="icon-button open-menu" aria-label="Open navigation" aria-expanded={menu} aria-controls="career-navigation" onClick={() => setMenu(true)}><Menu size={21} /></button><span>Workspace</span><ChevronRight size={15} /><strong>{view === 'dashboard' ? 'Dashboard' : 'Career profile'}</strong></div><button onClick={logout} disabled={signingOut || saving} className="signout"><LogOut size={16} />{signingOut ? 'Signing out…' : 'Sign out'}</button></header>
+    <div className="main-shell" inert={menu}><header className="topbar"><div className="breadcrumbs"><button ref={menuButtonRef} className="icon-button open-menu" aria-label="Open navigation" aria-expanded={menu} aria-controls="career-navigation" onClick={() => setMenu(true)}><Menu size={21} /></button><span>Workspace</span><ChevronRight size={15} /><strong>{view === 'dashboard' ? 'Dashboard' : view === 'profile' ? 'Career profile' : 'Goals'}</strong></div><button onClick={logout} disabled={signingOut || saving} className="signout"><LogOut size={16} />{signingOut ? 'Signing out…' : 'Sign out'}</button></header>
       {logoutError && <div className="notice error shell-error" role="alert">{logoutError} You are still signed in until sign out is confirmed.</div>}
-      {view === 'dashboard' ? <DashboardPage key={user.id} user={user} /> : <ProfilePage key={user.id} userId={user.id} />}
+      {view === 'dashboard' ? <DashboardPage key={user.id} user={user} /> : view === 'profile' ? <ProfilePage key={user.id} userId={user.id} /> : view === 'new-goal' ? <NewGoalPage key={user.id} userId={user.id} /> : view === 'goal-detail' ? <GoalDetailPage key={user.id} userId={user.id} /> : <GoalsPage key={user.id} userId={user.id} />}
     </div>
   </div>;
 }
@@ -210,13 +211,13 @@ export function App() {
   useEffect(() => {
     const id = session.user?.id ?? null;
     if (session.status === 'anonymous') client.clear();
-    else if (previous.current !== null && id !== previous.current) { client.removeQueries({ queryKey: ['career-profile', previous.current] }); client.removeQueries({ queryKey: ['dashboard', previous.current] }); }
+    else if (previous.current !== null && id !== previous.current) { client.removeQueries({ queryKey: ['career-profile', previous.current] }); client.removeQueries({ queryKey: ['dashboard', previous.current] }); client.removeQueries({ queryKey: ['goals', previous.current] }); client.removeQueries({ queryKey: ['goal', previous.current] }); }
     previous.current = id;
   }, [session.user?.id, session.status, client]);
   if (session.status === 'loading') return <Loading />;
   return <DirtyContext.Provider value={{ dirty, setDirty, saving, setSaving }}><a className="skip-link" href="#main-content">Skip to content</a><Routes>
     <Route path="/login" element={<AuthPage key="login" />} /><Route path="/register" element={<AuthPage key="register" register />} />
-    <Route path="/dashboard" element={<AppShell view="dashboard" />} /><Route path="/profile" element={<AppShell view="profile" />} /><Route path="/" element={<Navigate to={session.status === 'authenticated' ? '/dashboard' : '/login'} replace />} />
+    <Route path="/goals" element={<AppShell view="goals" />} /><Route path="/goals/new" element={<AppShell view="new-goal" />} /><Route path="/goals/:goalId" element={<AppShell view="goal-detail" />} /><Route path="/dashboard" element={<AppShell view="dashboard" />} /><Route path="/profile" element={<AppShell view="profile" />} /><Route path="/" element={<Navigate to={session.status === 'authenticated' ? '/dashboard' : '/login'} replace />} />
     <Route path="*" element={<main className="not-found" id="main-content" tabIndex={-1}><Brand /><h1>This page isn’t here.</h1><p>Let’s get you back to your space.</p><Link className="button primary" to="/">Back to CareerOS</Link></main>} />
   </Routes></DirtyContext.Provider>;
 }

@@ -33,8 +33,18 @@ try {
 const { createApp } = await import('../../src/app.ts');
 const { default: prisma } = await import('../../src/config/prisma.ts');
 const fixture = express();
+// Prebuild before listening, as express-rate-limit requires initialization outside requests.
+const suiteApplications = Array.from({ length: 8 }, () => createApp());
+let application = suiteApplications.shift();
 fixture.get('/api/__local_fixture__', (_req, res) => res.json({ fixtureKey }));
-fixture.use(createApp());
+// Test-only process state isolation: no data/session changes, production limits unchanged.
+fixture.post('/api/__local_fixture__/new-suite', (req, res) => {
+  if (req.get('X-Fixture-Key') !== fixtureKey) return res.sendStatus(403);
+  if (!suiteApplications.length) return res.sendStatus(409);
+  application = suiteApplications.shift();
+  res.sendStatus(204);
+});
+fixture.use((req, res, next) => application(req, res, next));
 const server = fixture.listen(port, '127.0.0.1'); await once(server, 'listening');
 console.log('Isolated browser fixture ready on loopback');
 let stopping;
