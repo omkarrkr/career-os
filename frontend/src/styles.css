@@ -156,3 +156,10 @@ nav a[aria-disabled="true"] { opacity: .6; cursor: wait; }
 .goal-actions .goal-form { margin-top: 25px; }
 .button.danger { color: #943b30; background: #fff3f0; border: 1px solid #dba89f; }
 .button.danger:hover { background: #ffe5df; }
+.goal-filters { display: flex; flex-wrap: wrap; align-items: end; gap: 18px; margin: 25px 0 18px; }
+.goal-filters > div { min-width: 0; }.goal-search { flex: 1 1 300px; }
+.goal-filters label { display: block; font-size: 14px; font-weight: 600; }
+.goal-search-controls { display: flex; gap: 10px; align-items: end; }
+.goal-search-controls input { min-width: 0; }
+.goal-filters select { display: block; width: 100%; max-width: 100%; margin-top: 9px; border: 1px solid #d6e0e4; border-radius: 7px; padding: 12px; background: white; color: #294650; font: inherit; min-height: 44px; }
+@media(max-width:640px) { .goal-filters { align-items: stretch; }.goal-filters > div { flex: 1 1 100%; }.goal-filters input,.goal-filters select { font-size: 16px; }.goal-search-controls .button { padding: 11px 14px; } }

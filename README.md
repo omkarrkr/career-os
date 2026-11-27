@@ -266,3 +266,5 @@ The authenticated landing page is now `/dashboard`, with owned goal counts, the 
 The Goals screen now supports viewing paginated owned goals, creating a goal and opening read-only details. Dashboard links open the list and individual records. Editing, completing and deleting goals remain later work. The screen uses existing backend APIs and requires no schema change.
 
 Goal details now also support partial editing, marking completed and permanent deletion with confirmation. Successful changes refresh owned list/dashboard data. Database-level ownership predicates and two-user mutation tests cover these endpoints; no new schema is needed.
+
+The Goals list also supports literal case-insensitive search across title/category/description, status filters and oldest/newest-added sorting. Filtering happens before pagination on the backend; changing criteria starts a fresh first page.

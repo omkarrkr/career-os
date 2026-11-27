@@ -1,6 +1,6 @@
 import prisma from "../config/prisma.js";
 import type { z } from "zod";
-import type { updateGoalSchema } from "../schemas/goal.schema.js";
+import type { updateGoalSchema, listGoalsSchema } from "../schemas/goal.schema.js";
 
 export const createGoal = async (
     userId: number,
@@ -22,10 +22,16 @@ export const createGoal = async (
     return goal;
 };
 
-export const listGoals = async (userId: number, limit: number, afterId?: number) => {
+export const listGoals = async (userId: number, { limit, afterId, q, status, sort }: z.infer<typeof listGoalsSchema>) => {
+    const search = q.replace(/[\\%_]/g, "\\$&");
     const goals = await prisma.goal.findMany({
-        where: { userId, ...(afterId !== undefined ? { id: { gt: afterId } } : {}) },
-        orderBy: { id: "asc" }, take: limit + 1,
+        where: {
+            userId,
+            ...(afterId !== undefined ? { id: sort === "newest" ? { lt: afterId } : { gt: afterId } } : {}),
+            ...(status === "ALL" ? {} : { status: status === "OTHER" ? { notIn: ["ACTIVE", "COMPLETED"] } : status }),
+            ...(search ? { OR: ["title", "category", "description"].map(field => ({ [field]: { contains: search, mode: "insensitive" as const } })) } : {}),
+        },
+        orderBy: { id: sort === "newest" ? "desc" : "asc" }, take: limit + 1,
     });
     const hasMore = goals.length > limit;
     const data = goals.slice(0, limit);

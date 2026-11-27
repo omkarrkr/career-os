@@ -95,9 +95,9 @@ Screen changes move keyboard focus to the new main content after rendering, incl
 
 ## Goals screens
 
-Use Goals in the sidebar, or View all goals on the dashboard. `/goals` lists owned records oldest first, 20 per page with Load more. `/goals/new` accepts title (200 characters), category (100), optional description (5,000) and optional UTC calendar target date. New goals use the backend default Active status. `/goals/:goalId` opens read-only details; inaccessible/invalid IDs reveal no other account's records. Confirmed creation refreshes list/dashboard data; the new record survives reload.
+Use Goals in the sidebar, or View all goals on the dashboard. `/goals` lists owned records oldest first, 20 per page with Load more. `/goals/new` accepts title (200 characters), category (100), optional description (5,000) and optional UTC calendar target date. New goals use the backend default Active status. `/goals/:goalId` opens saved details and management actions; inaccessible/invalid IDs reveal no other account's records. Confirmed creation refreshes list/dashboard data; the new record survives reload.
 
-Creation is not retried automatically. If a network/server failure makes the result uncertain, input remains visible and another submission is disabled until the user checks saved goals and starts a fresh form. Leaving a draft asks for confirmation. Editing, completion and deletion follow in a later increment. The browser fixture uses fictional records; never run it against Supabase.
+Creation is not retried automatically. If a network/server failure makes the result uncertain, input remains visible and another submission is disabled until the user checks saved goals and starts a fresh form. Leaving a draft asks for confirmation. Editing, completion and deletion are now available from goal details. The browser fixture uses fictional records; never run it against Supabase.
 
 Browser fixture isolation: each spec verifies the marker and uses a nonce-checked test-only new-suite endpoint to select an unused Express app prebuilt before startup, resetting in-memory rate counters while keeping fictional database records/sessions. Missing nonce returns 403. This endpoint exists only in the guarded loopback test entry point, never the production application. Run specs sequentially (workers=1); create a fresh empty database for a new fixture run. Production request/login limits are unchanged.
 
@@ -106,3 +106,9 @@ Browser fixture isolation: each spec verifies the marker and uses a nonce-checke
 Open a goal's details to edit title/category/description/target date, mark it completed, or delete it. Editing sends only changed fields; clearing optional fields removes those saved values. Cancel editing and navigation protect unsaved drafts. Completion and successful saves refresh list/dashboard queries. Delete goal asks for confirmation naming the goal and explaining that deletion is permanent. Cancel sends no delete request. No undo is available.
 
 Network/server failures do not falsely report success. Saved details can be reloaded while keeping an edit draft; an uncertain outcome blocks further changes until that read succeeds. Backend ownership checks apply independently to every PATCH/DELETE. The current UI offers completion; the API also accepts ACTIVE as an explicit status assignment. Concurrent same-field edits are last accepted write wins.
+
+## Search, filter and sort
+
+Goals now has Search goals (title/category/description), Status (All, Active, Completed, Other) and Sort goals (oldest/newest added). Press Search or Enter to apply search text. Status/sort apply immediately. Reset filters clears the search, restores All and oldest first. No matching goals means the filters found nothing; it does not mean the account has no goals.
+
+Filtering runs on the server before pagination. Changing criteria starts at the first page, including when returning to a previously loaded selection. Load more keeps the current criteria. Sorting uses insertion ID, and dates remain UTC. Search text is case-insensitive and literal, at most 100 characters. Search criteria live in component memory; returning from a detail page starts with defaults. Goal mutations invalidate all list-query variants for the account.

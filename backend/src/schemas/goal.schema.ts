@@ -5,6 +5,9 @@ export const goalIdSchema = z.string().regex(/^[1-9]\d*$/).transform(Number)
 export const listGoalsSchema = z.object({
     limit: z.string().regex(/^[1-9]\d*$/).transform(Number).pipe(z.number().int().max(50)).default(20),
     afterId: goalIdSchema.optional(),
+    q: z.string().trim().max(100).default(""),
+    status: z.enum(["ALL", "ACTIVE", "COMPLETED", "OTHER"]).default("ALL"),
+    sort: z.enum(["oldest", "newest"]).default("oldest"),
 });
 
 export const createGoalSchema = z.object({

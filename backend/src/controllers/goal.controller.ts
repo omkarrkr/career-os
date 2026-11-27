@@ -13,7 +13,7 @@ const ownerId = (res: Response): number => {
 export const listGoalsController = async (req: Request, res: Response) => {
     const parsed = listGoalsSchema.safeParse(req.query);
     if (!parsed.success) throw new ApiError(400, "Invalid goal query");
-    res.json(await listGoals(ownerId(res), parsed.data.limit, parsed.data.afterId));
+    res.json(await listGoals(ownerId(res), parsed.data));
 };
 
 export const getGoalController = async (req: Request, res: Response) => {

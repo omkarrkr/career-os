@@ -137,6 +137,34 @@ test("goal ownership and direct-role isolation with native PostgreSQL", { skip: 
             assert.equal((await request(`/${a.id}`, tokens[0], undefined, 'DELETE')).status, 404);
             assert.deepEqual((await db.query('SELECT * FROM "Goal" WHERE id=$1', [b.id])).rows[0], other);
         });
+        await t.test("search, status filters and both cursor directions remain owned and literal", async () => {
+            const inserted = (await db.query(`INSERT INTO "Goal" (title,category,description,status,"userId") VALUES
+                ('Search needle','Learning','Database alias','ACTIVE',$1),
+                ('100%_\\ literal','Needle',NULL,'COMPLETED',$1),
+                ('Search needle','Legacy',NULL,'ARCHIVED',$1),
+                ('Search needle','Private',NULL,'ACTIVE',$2) RETURNING id`, [users[0].id, users[1].id])).rows.map(row => row.id);
+            const list = async query => { const response = await request(`?${query}`, tokens[0]); assert.equal(response.status, 200); return response.json(); };
+            try {
+                assert.deepEqual((await list('q=NEEDLE')).data.map(row => row.id), inserted.slice(0,3));
+                assert.deepEqual((await list('q=database')).data.map(row => row.id), [inserted[0]]);
+                for (const [status, id] of [['ACTIVE', inserted[0]], ['COMPLETED', inserted[1]], ['OTHER', inserted[2]]]) {
+                    assert.deepEqual((await list(`q=needle&status=${status}`)).data.map(row => row.id), [id]);
+                }
+                assert.deepEqual((await list(`q=${encodeURIComponent('%_\\')}`)).data.map(row => row.id), [inserted[1]]);
+                assert.deepEqual((await list('q=B%20one')).data, []);
+                assert.deepEqual((await list('q=no-matches-here')).data, []);
+                let cursor = '', ids = [];
+                for (let page=0; page<4; page++) {
+                    const result = await list(`q=needle&sort=newest&limit=1${cursor}`); ids.push(...result.data.map(row => row.id));
+                    if (result.nextCursor === null) break;
+                    cursor = `&afterId=${result.nextCursor}`;
+                }
+                assert.deepEqual(ids, inserted.slice(0,3).reverse());
+                await db.query('DELETE FROM "Goal" WHERE id=$1', [inserted[2]]);
+                assert.deepEqual((await list(`q=needle&sort=newest&afterId=${inserted[2]}`)).data.map(row => row.id), [inserted[1],inserted[0]]);
+                for (const query of ['q=a&q=b', 'status=DONE', 'sort=title', `q=${'x'.repeat(101)}`]) assert.equal((await request(`?${query}`, tokens[0])).status, 400);
+            } finally { await db.query('DELETE FROM "Goal" WHERE id=ANY($1::int[])', [inserted]); }
+        });
         await t.test("revocation denies goal operations despite a valid signed token", async () => {
             await db.query('UPDATE "AuthSession" SET "revokedAt"=$2 WHERE id=$1', [sessions[1], new Date().toISOString()]);
             assert.equal((await request("", tokens[1])).status, 401);
