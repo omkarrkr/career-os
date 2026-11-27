@@ -82,3 +82,9 @@ E2E_FIXTURE_KEY is a test marker, not an application secret. Windows defaults to
 `src/App.tsx` composes auth screens, protected shell and the profile form. `src/lib/auth-client.ts` owns memory-only session/request behavior; `auth.ts` supplies browser locks/notifications. `profile-form.ts` derives partial saves; `types.ts` describes API response shapes. TanStack Query owns server-loaded profile state, while React owns unsaved input. The backend remains authoritative for validation, identity and ownership.
 
 Setup follows the official [Vite guide](https://vite.dev/guide/), [React Router installation](https://reactrouter.com/start/declarative/installation) and [Tailwind Vite integration](https://tailwindcss.com/docs/installation/using-vite). Exact installed versions and the reproducible dependency tree are recorded in package.json/package-lock.json.
+
+## Dashboard
+
+Sign-in now opens `/dashboard`. DashboardPage reads the account-scoped summary API; profile saves invalidate its query. Recent goals are read-only in this step. No fake trend, readiness score or AI output is displayed. The profile navigation guard allows cancelling or discarding unsaved edits.
+
+For concurrent development and browser tests, use a separate frontend port and `CAREEROS_VITE_CACHE_DIR` for the fixture server. Set `TEST_FRONTEND_ORIGIN` and `E2E_BASE_URL` to that frontend origin. Clear `VITE_API_ORIGIN` for the fixture so API requests go through its isolated proxy. If Vite reports its project lock, its `--bypass-lock` option is only appropriate with this separate test port and cache. The fixture marker must still match before tests run; browser tests abort off-origin API requests. Never point the fixture at Supabase.

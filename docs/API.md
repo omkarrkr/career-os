@@ -151,3 +151,11 @@ All /api paths share a fixed-window per-IP limit of 100 requests per 15 minutes;
 ## First frontend integration
 
 The React client at localhost:5173 uses the Vite /api proxy by default. Its auth requests include cookies and fresh CSRF headers; protected profile calls omit cookies and attach the memory-only access token. The client serializes refresh across tabs, verifies the refreshed identity, retries only a denied protected request once and never blindly retries a network-ambiguous refresh or save. Registration still requires a separate sign-in. Profile PATCH sends changed fields only, preserving omission/null/[] semantics and displaying server validation errors. No API contract, migration or real Supabase data changed in the frontend step. See frontend/README.md for setup and the isolated browser-test fixture.
+
+## Dashboard read API
+
+`GET /api/users/dashboard` requires a live Bearer session and returns `{ data: { asOf, overdueBefore, profile, completeness, goals, recentGoals } }`. Ownership comes exclusively from the authenticated account; caller query parameters cannot choose another account.
+
+`profile` is null or the five core career-profile fields. `completeness` uses the existing five-field checklist. `goals` contains total, active, completed, other and overdue counts. Active means exact `ACTIVE`; completed means exact `COMPLETED`; all remaining status strings count as other. Overdue is a subset of active: targetDate is strictly before today's UTC midnight. Today's deadlines, missing dates and completed/other statuses are excluded from overdue.
+
+`recentGoals` contains at most five owned records, ordered by createdAt descending then id descending, selecting only id, title, category, status, targetDate and createdAt. Dates are ISO strings. Counts include all owned records, not just this list. Empty accounts return zero counts and an empty list. One PostgreSQL repeatable-read transaction reads a consistent snapshot without modifying records. The response includes no credentials, owner identifiers or goal descriptions. The existing authentication, CORS and rate limits apply.

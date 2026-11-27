@@ -9,10 +9,16 @@ test.beforeAll(async ({ request }) => {
   expect(response.ok()).toBe(true);
   expect((await response.json()).fixtureKey).toBe(key);
 });
-test.beforeEach(async ({ page }) => { await page.goto('/login'); });
+test.beforeEach(async ({ page, context, baseURL }) => {
+  const allowed = new URL(baseURL!).origin;
+  await context.route('**/api/**', route => new URL(route.request().url()).origin === allowed ? route.continue() : route.abort());
+  await page.goto('/login');
+});
 async function login(page: import('@playwright/test').Page) {
   await page.getByLabel('Email address').fill(email); await page.getByLabel('Password', { exact: true }).fill(password);
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Your next steps start here.' })).toBeVisible();
+  await page.getByRole('link', { name: 'Edit profile', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Your career, in context.' })).toBeVisible();
 }
 test('login, saved profile, clearing, reload and confirmed sign out', async ({ page }) => {
@@ -76,6 +82,9 @@ test('registration leads to explicit sign in and an empty private profile', asyn
   await page.getByLabel('Email address', { exact: true }).fill('new-browser-student@example.test');
   await page.getByLabel('Password', { exact: true }).fill(password);
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'No goals saved yet.', exact: true })).toBeVisible();
+  await expect(page.getByRole('article', { name: 'Total goals', exact: true }).locator('.stat-value')).toHaveText('0');
+  await page.getByRole('link', { name: 'Edit profile', exact: true }).click();
   await expect(page.getByLabel('College or institution', { exact: true })).toHaveValue('');
   await expect(page.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '0');
 });

@@ -1,13 +1,14 @@
 import { createContext, useContext, useEffect, useRef, useState, useSyncExternalStore, type FormEvent } from 'react';
-import { Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router';
+import { Link, Navigate, Route, Routes, useLocation, useNavigate, useBlocker } from 'react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowUpRight, BookOpen, Check, CheckCircle2, ChevronRight, Compass, GraduationCap, Leaf, LoaderCircle, LogOut, Menu, ShieldCheck, Sparkles, Target, X } from 'lucide-react';
+import { ArrowUpRight, BookOpen, Check, CheckCircle2, ChevronRight, Compass, GraduationCap, Leaf, LoaderCircle, LogOut, Menu, LayoutDashboard, ShieldCheck, Sparkles, Target, X } from 'lucide-react';
 import { auth } from './lib/auth';
+import { DashboardPage } from './DashboardPage';
 import { ApiError } from './lib/auth-client';
 import { buildPatch, emptyForm, toForm, type FormValues } from './lib/profile-form';
 import type { CoreField, ProfileResponse } from './lib/types';
 
-const DirtyContext = createContext({ dirty: false, setDirty: (_value: boolean) => {} });
+const DirtyContext = createContext({ dirty: false, setDirty: (_value: boolean) => {}, saving: false, setSaving: (_value: boolean) => {} });
 const labels: Record<CoreField, string> = { institution: 'Your institution', degree: 'Degree or programme', graduationYear: 'Graduation year', targetRole: 'Target role', weeklyLearningHours: 'Weekly learning time' };
 function Brand({ light = false }: { light?: boolean }) {
   return <span className={`brand ${light ? 'brand-light' : ''}`}><span className="brand-mark"><Compass size={23} strokeWidth={1.6} /></span>Career<span className="brand-os">OS</span></span>;
@@ -25,7 +26,7 @@ function AuthPage({ register = false }: { register?: boolean }) {
   const errorRef = useRef<HTMLDivElement>(null);
   useEffect(() => { document.title = `${register ? 'Create account' : 'Sign in'} · CareerOS`; }, [register]);
   useEffect(() => { if (error) errorRef.current?.focus(); }, [error]);
-  if (session.status === 'authenticated') return <Navigate to="/profile" replace />;
+  if (session.status === 'authenticated') return <Navigate to="/dashboard" replace />;
   const submit = async (event: FormEvent) => {
     event.preventDefault(); setError(''); setFieldErrors({}); setBusy(true);
     try {
@@ -75,9 +76,9 @@ function AuthPage({ register = false }: { register?: boolean }) {
   </main>;
 }
 
-function AppShell() {
+function AppShell({ view }: { view: 'dashboard' | 'profile' }) {
   const session = useSyncExternalStore(auth.subscribe, auth.getSnapshot);
-  const { dirty } = useContext(DirtyContext);
+  const { dirty, saving } = useContext(DirtyContext);
   const [signingOut, setSigningOut] = useState(false); const [logoutError, setLogoutError] = useState(''); const [menu, setMenu] = useState(false);
   const sidebarRef = useRef<HTMLElement>(null); const menuButtonRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
@@ -105,30 +106,40 @@ function AppShell() {
   };
   return <div className="app-layout">
     <aside id="career-navigation" ref={sidebarRef} role={menu ? 'dialog' : undefined} aria-modal={menu || undefined} aria-label={menu ? 'Workspace navigation' : undefined} className={`sidebar ${menu ? 'sidebar-open' : ''}`}>
-      <div className="sidebar-brand"><Link to="/profile" aria-label="CareerOS profile"><Brand light /></Link><button className="icon-button close-menu" aria-label="Close navigation" onClick={() => setMenu(false)}><X size={22} /></button></div>
+      <div className="sidebar-brand"><Link to="/dashboard" aria-label="CareerOS dashboard" aria-disabled={saving} onClick={event => { if (saving) event.preventDefault(); }}><Brand light /></Link><button className="icon-button close-menu" aria-label="Close navigation" onClick={() => setMenu(false)}><X size={22} /></button></div>
       <div className="workspace-caption">YOUR WORKSPACE</div>
-      <nav aria-label="Main navigation"><Link className="nav-active" to="/profile" onClick={() => setMenu(false)}><Compass size={20} />Career profile<span className="nav-line" /></Link></nav>
+      <nav aria-label="Main navigation"><Link className={view === 'dashboard' ? 'nav-active' : ''} aria-current={view === 'dashboard' ? 'page' : undefined} to="/dashboard" aria-disabled={saving} onClick={event => { if (saving) event.preventDefault(); else setMenu(false); }}><LayoutDashboard size={20} />Dashboard{view === 'dashboard' && <span className="nav-line" />}</Link><Link className={view === 'profile' ? 'nav-active' : ''} aria-current={view === 'profile' ? 'page' : undefined} to="/profile" aria-disabled={saving} onClick={event => { if (saving) event.preventDefault(); else setMenu(false); }}><Compass size={20} />Career profile{view === 'profile' && <span className="nav-line" />}</Link></nav>
       <div className="sidebar-note"><span className="sidebar-note-icon"><Sparkles size={21} /></span><h3>A strong start.</h3><p>Your background and direction are the foundation for what comes next.</p></div>
       <div className="sidebar-bottom"><span className="avatar">{user.name.trim().slice(0, 1).toUpperCase()}</span><div><strong>{user.name}</strong><span>Personal workspace</span></div></div>
     </aside>
     {menu && <button className="menu-backdrop" aria-label="Close navigation" onClick={() => setMenu(false)} />}
-    <div className="main-shell" inert={menu}><header className="topbar"><div className="breadcrumbs"><button ref={menuButtonRef} className="icon-button open-menu" aria-label="Open navigation" aria-expanded={menu} aria-controls="career-navigation" onClick={() => setMenu(true)}><Menu size={21} /></button><span>Workspace</span><ChevronRight size={15} /><strong>Career profile</strong></div><button onClick={logout} disabled={signingOut} className="signout"><LogOut size={16} />{signingOut ? 'Signing out…' : 'Sign out'}</button></header>
+    <div className="main-shell" inert={menu}><header className="topbar"><div className="breadcrumbs"><button ref={menuButtonRef} className="icon-button open-menu" aria-label="Open navigation" aria-expanded={menu} aria-controls="career-navigation" onClick={() => setMenu(true)}><Menu size={21} /></button><span>Workspace</span><ChevronRight size={15} /><strong>{view === 'dashboard' ? 'Dashboard' : 'Career profile'}</strong></div><button onClick={logout} disabled={signingOut || saving} className="signout"><LogOut size={16} />{signingOut ? 'Signing out…' : 'Sign out'}</button></header>
       {logoutError && <div className="notice error shell-error" role="alert">{logoutError} You are still signed in until sign out is confirmed.</div>}
-      <ProfilePage key={user.id} userId={user.id} />
+      {view === 'dashboard' ? <DashboardPage key={user.id} user={user} /> : <ProfilePage key={user.id} userId={user.id} />}
     </div>
   </div>;
 }
 
 function ProfilePage({ userId }: { userId: number }) {
-  const client = useQueryClient(); const { setDirty } = useContext(DirtyContext);
+  const client = useQueryClient(); const { setDirty, setSaving } = useContext(DirtyContext);
   const query = useQuery({ queryKey: ['career-profile', userId], queryFn: ({ signal }) => auth.api<ProfileResponse>('/api/users/career-profile', { signal }) });
   const [form, setForm] = useState<FormValues>({ ...emptyForm }); const [saved, setSaved] = useState<FormValues>({ ...emptyForm });
   const [initialized, setInitialized] = useState(false); const [busy, setBusy] = useState(false); const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({}); const [success, setSuccess] = useState('');
   const dirty = initialized && JSON.stringify(form) !== JSON.stringify(saved);
+  const blocker = useBlocker(({ currentLocation, nextLocation }) => dirty && currentLocation.pathname !== nextLocation.pathname);
+  const promptedTransition = useRef<object | null>(null);
+  useEffect(() => {
+    if (blocker.state !== 'blocked') { promptedTransition.current = null; return; }
+    if (promptedTransition.current === blocker) return;
+    promptedTransition.current = blocker;
+    if (busy) { blocker.reset(); return; }
+    if (window.confirm('Discard unsaved profile changes and leave this page?')) blocker.proceed(); else blocker.reset();
+  }, [blocker, busy]);
   const errorRef = useRef<HTMLDivElement>(null);
   useEffect(() => { document.title = 'Career profile · CareerOS'; }, []);
   useEffect(() => { if (query.data && !initialized) { const values = toForm(query.data.data); setForm(values); setSaved(values); setInitialized(true); } }, [query.data, initialized]);
+  useEffect(() => { setSaving(busy); return () => setSaving(false); }, [busy, setSaving]);
   useEffect(() => { setDirty(dirty); return () => setDirty(false); }, [dirty, setDirty]);
   useEffect(() => {
     if (!dirty) return;
@@ -151,7 +162,7 @@ function ProfilePage({ userId }: { userId: number }) {
     setBusy(true);
     try {
       const response = await auth.api<ProfileResponse>('/api/users/career-profile', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch) });
-      client.setQueryData(['career-profile', userId], response); const values = toForm(response.data);
+      client.setQueryData(['career-profile', userId], response); void client.invalidateQueries({ queryKey: ['dashboard', userId] }); const values = toForm(response.data);
       setForm(values); setSaved(values); setSuccess('Your profile is saved.');
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Could not confirm the save. Reload your saved profile before trying again.'); if (cause instanceof ApiError) setFieldErrors(cause.fields); }
     finally { setBusy(false); }
@@ -187,18 +198,18 @@ function ProfilePage({ userId }: { userId: number }) {
 
 export function App() {
   const session = useSyncExternalStore(auth.subscribe, auth.getSnapshot);
-  const client = useQueryClient(); const previous = useRef<number | null>(null); const [dirty, setDirty] = useState(false);
+  const client = useQueryClient(); const previous = useRef<number | null>(null); const [dirty, setDirty] = useState(false); const [saving, setSaving] = useState(false);
   useEffect(() => { void auth.restore(); }, []);
   useEffect(() => {
     const id = session.user?.id ?? null;
     if (session.status === 'anonymous') client.clear();
-    else if (previous.current !== null && id !== previous.current) client.removeQueries({ queryKey: ['career-profile', previous.current] });
+    else if (previous.current !== null && id !== previous.current) { client.removeQueries({ queryKey: ['career-profile', previous.current] }); client.removeQueries({ queryKey: ['dashboard', previous.current] }); }
     previous.current = id;
   }, [session.user?.id, session.status, client]);
   if (session.status === 'loading') return <Loading />;
-  return <DirtyContext.Provider value={{ dirty, setDirty }}><a className="skip-link" href="#main-content">Skip to content</a><Routes>
+  return <DirtyContext.Provider value={{ dirty, setDirty, saving, setSaving }}><a className="skip-link" href="#main-content">Skip to content</a><Routes>
     <Route path="/login" element={<AuthPage key="login" />} /><Route path="/register" element={<AuthPage key="register" register />} />
-    <Route path="/profile" element={<AppShell />} /><Route path="/" element={<Navigate to={session.status === 'authenticated' ? '/profile' : '/login'} replace />} />
+    <Route path="/dashboard" element={<AppShell view="dashboard" />} /><Route path="/profile" element={<AppShell view="profile" />} /><Route path="/" element={<Navigate to={session.status === 'authenticated' ? '/dashboard' : '/login'} replace />} />
     <Route path="*" element={<main className="not-found"><Brand /><h1>This page isn’t here.</h1><p>Let’s get you back to your space.</p><Link className="button primary" to="/">Back to CareerOS</Link></main>} />
   </Routes></DirtyContext.Provider>;
 }

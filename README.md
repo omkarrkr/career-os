@@ -14,7 +14,7 @@ CareerOS is a full-stack AI platform that helps engineering students with:
 
 ## Current Status
 
-The backend foundation is verified. The React/TypeScript/Vite/Tailwind frontend now includes a responsive shell, sign-in/registration and a connected private career-profile form. Goal creation validates input and registration creates users with bcrypt-hashed passwords and public-field-only responses. Login, refresh rotation, logout and a protected real-user profile are implemented. Goal creation/list/detail now require a valid session and restrict access to the signed-in owner. Verified legacy linkage and mandatory database ownership are complete. Password changes revoke all sessions for that account. Career-profile read/partial-update APIs now persist private education, target role, weekly learning time, interests and bio, with an explicit completion checklist. The real dashboard, deployment preview and owner-run end-to-end acceptance remain pending; this is not a production-ready multi-user API.
+The backend foundation is verified. The React/TypeScript/Vite/Tailwind frontend now includes a responsive shell, sign-in/registration and a connected private career-profile form. Goal creation validates input and registration creates users with bcrypt-hashed passwords and public-field-only responses. Login, refresh rotation, logout and a protected real-user profile are implemented. Goal creation/list/detail now require a valid session and restrict access to the signed-in owner. Verified legacy linkage and mandatory database ownership are complete. Password changes revoke all sessions for that account. Career-profile read/partial-update APIs now persist private education, target role, weekly learning time, interests and bio, with an explicit completion checklist. The real dashboard is implemented; deployment preview and owner-run dashboard acceptance remain pending; this is not a production-ready multi-user API.
 
 The first release connects a target role, skill/project evidence, explained gaps, goals, a roadmap and a reviewed AI weekly plan. The features above describe the longer-term vision. See [the active milestones](docs/ROADMAP.md), [architecture](docs/ARCHITECTURE.md) and [historical audit](docs/PROJECT_AUDIT.md).
 
@@ -256,3 +256,7 @@ POST /api/users/register additionally has a 10-attempt/IP/15-minute budget; fail
 ## License
 
 ISC
+
+## Dashboard milestone
+
+The authenticated landing page is now `/dashboard`, with owned goal counts, the five newest goals, saved career direction and the core-field completion checklist. `/profile` remains editable; successful saves refresh the next dashboard visit. The owner has confirmed real profile save/reload persistence. Dashboard owner acceptance, remaining accessibility review and deployment preview are still pending.

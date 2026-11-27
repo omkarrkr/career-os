@@ -118,10 +118,11 @@ Acceptance: two users cannot access each other's resources; existing data is pre
 ## Phase 3: career profile and first frontend
 
 - [x] Add private career-profile GET/PATCH APIs, bounded fields, one-to-one storage and documented five-field completion checklist.
-- [ ] Add real dashboard summaries as the frontend workflow needs them.
+- [x] Add real dashboard summaries as the frontend workflow needs them.
 - [x] Scaffold React/TypeScript/Vite/Tailwind and protected routing.
 - [x] Build registration/login, session-aware navigation and the career-profile form with API integration.
-- [ ] Build a real dashboard and verify the complete workflow with the owner.
+- [x] Build a real dashboard with owned counts, saved profile and recent goals.
+- [ ] Verify the dashboard workflow with the owner.
 - [x] Add labeled forms, loading/error/empty/unsaved states and responsive keyboard-aware navigation.
 - [ ] Review remaining accessibility cases and prepare an appropriate deployment preview.
 
@@ -211,3 +212,5 @@ This phase broadens existing verification; it is not the first time tests or sec
 ## Definition of a finished milestone
 
 Working behavior demonstrated; important failure/ownership cases verified; build passes; schema changes reviewed and non-destructive; relevant docs updated; diff and secret exposure reviewed. Explain the feature and architecture before implementation, then provide concise learning notes and an exercise after verification. Advance one verified milestone at a time within the authorized scope.
+
+M3 dashboard step (27 November): owned read API and React dashboard implemented with profile direction, completion checklist, exact-status totals, UTC overdue subset and latest-five goals. Profile saves refresh dashboard data and guarded navigation protects drafts. Validation passed: 89 backend default tests, 6 native PostgreSQL dashboard tests (including parent), 13 frontend unit tests, 9 isolated browser flows and both production builds. The owner previously confirmed real profile save/reload; owner dashboard acceptance, remaining accessibility review and deployment preview remain outstanding. No Supabase schema or records changed in this step.

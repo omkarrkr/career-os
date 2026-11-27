@@ -5,6 +5,7 @@ import tailwindcss from '@tailwindcss/vite';
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), 'CAREEROS_');
   return {
+    cacheDir: env.CAREEROS_VITE_CACHE_DIR || 'node_modules/.vite',
     plugins: [react(), tailwindcss()],
     server: {
       port: 5173, strictPort: true,

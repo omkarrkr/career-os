@@ -20,7 +20,8 @@
     "test:integration:goals": "node --import ./tests/setup-env.mjs --import tsx --test tests/integration/goals.test.mjs",
     "test:integration:password": "node --import ./tests/setup-env.mjs --import tsx --test tests/integration/password-change.test.mjs",
     "test:integration:profile": "node --import ./tests/setup-env.mjs --import tsx --test tests/integration/career-profile.test.mjs",
-    "test:browser-server": "node --import ./tests/setup-env.mjs --import tsx tests/fixtures/browser-server.mjs"
+    "test:browser-server": "node --import ./tests/setup-env.mjs --import tsx tests/fixtures/browser-server.mjs",
+    "test:integration:dashboard": "node --import ./tests/setup-env.mjs --import tsx --test tests/integration/dashboard.test.mjs"
   },
   "keywords": [],
   "author": "",

@@ -24,8 +24,11 @@ try {
   for (const migration of (await readdir(directory, { withFileTypes: true })).filter(entry => entry.isDirectory()).map(entry => entry.name).sort()) {
     await database.query(await readFile(new URL(`${migration}/migration.sql`, directory), 'utf8'));
   }
-  await database.query('INSERT INTO "User" (name,email,"passwordHash","updatedAt") VALUES ($1,$2,$3,NOW())',
-    ['Aarav Student', 'ui-student@example.test', await bcrypt.hash('Fictional browser test passphrase!', 12)]);
+  const owner = (await database.query('INSERT INTO "User" (name,email,"passwordHash","updatedAt") VALUES ($1,$2,$3,NOW()) RETURNING id',
+    ['Aarav Student', 'ui-student@example.test', await bcrypt.hash('Fictional browser test passphrase!', 12)])).rows[0];
+  await database.query(`INSERT INTO "Goal" (title,category,status,"targetDate","userId") VALUES ('Plan my first portfolio project','Projects','ACTIVE','2099-01-01',$1),('Read the TypeScript handbook','Learning','COMPLETED','2000-01-01',$1)`,[owner.id]);
+  const peer=(await database.query(`INSERT INTO "User" (name,email,"passwordHash","updatedAt") VALUES ('Fictional peer','peer@example.test','fixture-only',NOW()) RETURNING id`)).rows[0];
+  await database.query(`INSERT INTO "Goal" (title,category,status,"targetDate","userId") VALUES ('Peer private goal','Private','ACTIVE','2000-01-01',$1)`,[peer.id]);
 } finally { await database.end(); }
 const { createApp } = await import('../../src/app.ts');
 const { default: prisma } = await import('../../src/config/prisma.ts');

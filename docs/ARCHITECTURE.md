@@ -102,3 +102,9 @@ A test-only backend entry point refuses non-loopback/nonempty/non-careeros_test_
 ## Engineering tradeoffs
 
 Continue with the small route/controller/service structure; there is no evidence that microservices or a repository abstraction are needed now. Add shared state management only when the UI needs it. Keep tests and security work alongside each feature rather than postponing all verification to the final phases. Deployment readiness requires successful builds, database verification, environment validation, graceful shutdown, monitoring, backups and safe migration procedures.
+
+## Dashboard flow
+
+React DashboardPage -> memory-token authenticated GET /api/users/dashboard -> authenticated user controller -> dashboard service -> four Prisma reads in one repeatable-read snapshot -> owned profile, aggregate counts and latest five goals. No migration or new dependency is required. The service selects public summary fields and scopes every query to the session user.
+
+Dashboard query keys include the account ID, old account caches are cleared on identity changes, and successful profile saves invalidate the dashboard. React Router uses a data router so the profile can block navigation while edits are unsaved; one confirmation handles each blocked transition, including development effect replay. Save-in-progress navigation is disabled. Loading, empty, retry and stale-refresh states are explicit. Dates use UTC calendar days; statistics describe stored records rather than inferred readiness or AI progress.
