@@ -1,0 +1,21 @@
+import { z } from 'zod';
+import { projectEvidenceSchema, projectIdSchema, projectListSchema } from './project.schema.js';
+export { projectIdSchema as recordIdSchema, projectListSchema as recordListSchema };
+const requiredText = z.string().trim().min(1).max(200);
+const text = (max: number) => z.string().trim().max(max).nullable().optional();
+const date = z.iso.date().nullable().optional();
+const skills = z.array(projectEvidenceSchema).max(20).refine(values => new Set(values.map(item => item.skillId)).size === values.length, 'Each skill may be linked once').optional();
+const link = z.string().trim().max(2048).url().refine(value => {
+    const url = new URL(value); return ['http:', 'https:'].includes(url.protocol) && !url.username && !url.password && !/[\s\u0000-\u001f\u007f]/.test(value);
+}, 'Use an HTTP or HTTPS URL without embedded credentials').nullable().optional();
+const certification = z.object({ title: requiredText, issuer: requiredText, description: text(3000), credentialId: text(200), credentialUrl: link, issuedDate: date, expiresDate: date, skills }).strict();
+const experience = z.object({ title: requiredText, organization: requiredText, description: text(3000), achievements: text(2000), type: z.enum(['INTERNSHIP','EMPLOYMENT','FREELANCE','VOLUNTEERING','OTHER']).optional(), startDate: date, endDate: date, isCurrent: z.boolean().optional(), skills }).strict();
+const certificationDates = (value: {issuedDate?: string | null | undefined; expiresDate?: string | null | undefined}) => !value.issuedDate || !value.expiresDate || value.expiresDate >= value.issuedDate;
+const experienceDates = (value: {startDate?: string | null | undefined; endDate?: string | null | undefined; isCurrent?: boolean | undefined}) => (!value.startDate || !value.endDate || value.endDate >= value.startDate) && !(value.isCurrent && value.endDate);
+const nonempty = (value: object) => Object.values(value).some(field => field !== undefined);
+export const createCertificationSchema = certification.refine(certificationDates, 'Expiry must not be before issue date');
+export const updateCertificationSchema = certification.partial().refine(nonempty, 'Provide at least one field').refine(certificationDates, 'Expiry must not be before issue date');
+export const createExperienceSchema = experience.refine(experienceDates, 'Check the date order; current experience must not have an end date');
+export const updateExperienceSchema = experience.partial().refine(nonempty, 'Provide at least one field').refine(experienceDates, 'Check the date order; current experience must not have an end date');
+export type CertificationInput = z.infer<typeof updateCertificationSchema>;
+export type ExperienceInput = z.infer<typeof updateExperienceSchema>;

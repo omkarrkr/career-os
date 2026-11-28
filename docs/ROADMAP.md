@@ -152,7 +152,7 @@ Acceptance: an authenticated user edits their profile and sees persisted real da
 
 - [x] Add owned project CRUD, dates, descriptions, outcomes and validated external URLs.
 - [x] Associate catalog skills with owned projects and private contribution explanations.
-- [ ] Add owned certifications and experience records.
+- [x] Add owned certifications and experience records with dates, credentials/contributions and related skills.
 - [ ] Associate relevant projects and goals with owner-consistent links.
 - [ ] Build portfolio/profile views and verify related-write consistency.
 
@@ -252,3 +252,7 @@ Verified this increment: 99 backend default tests, 8 native Skills integration c
 28 November — Projects and skill evidence implemented. Owned project CRUD and screen include bounded fields, status/calendar dates, validated external links and up to 20 unique catalog skill links with private contribution explanations. Related writes are atomic; merged date updates lock the owned parent. Evidence survives personal assessment removal; project deletion cascades only its own links. Screen controls include draft protection, safe external links, confirmation-protected deletion and unknown-outcome reload recovery. Records remain self-reported and private, with no proficiency or readiness score.
 
 The additive migration passed fresh scoped backup/native restore/exact-SQL rehearsal, preservation fingerprints for all 8 prior tables, live migration/model checks and compiled read-only smoke. Validation: 103 backend default tests, 8 native project API checks (including parent), 13 frontend unit tests, 16 isolated browser flows and both production builds passed; desktop/mobile editor reviewed. No dependency changes or real test project records. Real-account acceptance is next; certifications/experience, goal links, portfolio views, role-gap calculations and hosted preview remain open.
+
+28 November — Certifications and experience implemented. Separate owned records include credential issuer/ID/link and issue/expiry dates, or organization/work type/current state/dates/responsibilities/achievements. Both link up to 20 catalog skills with optional explanations. APIs provide strict owned CRUD, bounded pagination, atomic related writes, merged calendar/current validation under row locks and safe public fields. Shared screen mechanics preserve drafts and recover unknown outcomes, including a delete whose response was lost. Records remain private and self-reported; they do not change personal levels or claim verified credentials/employment.
+
+Migration 20261128140000_add_certifications_and_experience passed a fresh public-schema backup/native restore/exact-SQL rehearsal and preservation checks for all ten prior tables. All four new tables enable RLS with no ordinary direct policies. Live migration/model and compiled read-only checks pass. Verification: 107 backend default tests, 14 native record API checks (including parent), 13 frontend unit tests, 17 isolated browser flows and both production builds; desktop/mobile review passed. No dependency changes or real test records. Real-account acceptance is next; owner-consistent project/goal associations, portfolio views, role-gap calculations and hosted preview remain open.

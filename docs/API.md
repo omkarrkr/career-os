@@ -222,3 +222,21 @@ Project input: required `title` (trimmed, 1–200); optional nullable `descripti
 Optional `skills` is an array of at most 20 unique `{skillId,evidence?}` entries. `skillId` references the shared catalog; nullable `evidence` is at most 1,000 characters. On PATCH, omitted fields/skills are preserved, `null` clears optional fields and `skills:[]` removes all links. A supplied skills array replaces the project's links as one transaction. A nonexistent catalog skill returns 400 and rolls back the entire write. Partial date edits lock the owned row and validate the merged saved range. Reads omit internal user ownership and credential fields.
 
 Evidence belongs to the project and survives removal of a personal UserSkill assessment. Removing a project never deletes catalog entries or personal skill levels/notes. Linked skills and project status are self-reported; no verified proficiency/readiness score is calculated. Certifications, employment experience, goal associations and public portfolio sharing are separate future features.
+
+## Certifications and experience
+
+All endpoints require an active session and derive ownership from it. Foreign/missing IDs produce the same 404. Responses omit userId and private account fields and use no-store. No public sharing, credential verification or automatic proficiency scoring is performed.
+
+| Method | Path | Response |
+| --- | --- | --- |
+| GET | `/api/certifications` or `/api/experiences` | `{data,nextCursor}`; strict `limit` 1–50 (default 20), optional positive `afterId`, ascending ID, `_count.skills` per row |
+| GET | either path + `/:id` | `{data}` with safe details and related skills/explanations |
+| POST | either collection | 201 `{data}`, nested skill links saved atomically |
+| PATCH | either path + `/:id` | 200 `{data}`, strict nonempty partial edit |
+| DELETE | either path + `/:id` | 204; only that owned record and its skill links are removed |
+
+Certification input: required trimmed `title` and `issuer` (1–200 characters); optional nullable `description` (3,000), `credentialId` (200), `credentialUrl` (2,048), `issuedDate` and `expiresDate` (`YYYY-MM-DD`). Expiry must be on/after issue when both exist. Credential URL accepts only HTTP/HTTPS without whitespace or embedded credentials; the server never fetches it. Avoid secret links. Future/expired dates are stored as entered, without a verified/valid badge.
+
+Experience input: required trimmed `title` (role) and `organization` (1–200); optional nullable `description` (3,000), `achievements` (2,000), `startDate`, `endDate`; optional `type` INTERNSHIP/EMPLOYMENT/FREELANCE/VOLUNTEERING/OTHER (default OTHER), and boolean `isCurrent` (default false). End must be on/after start when both exist; current experience must have no end date. PATCH setting current true must explicitly clear an existing endDate with null. The browser does this visibly; the API does not silently erase dates.
+
+Both accept optional `skills:[{skillId,evidence?}]`, maximum 20 unique catalog IDs; nullable explanation maximum 1,000. On PATCH, omission preserves a field, null clears an optional value and an explicit skill array atomically replaces all links (`[]` removes all). Missing catalog skills return 400 and roll back the whole write. Related writes and partial calendar/current-state validation lock the owned parent in a transaction. Deleting a record leaves catalog entries, personal assessments, projects and other records intact; removing a personal assessment preserves these links.

@@ -49,6 +49,8 @@ model User {
   careerProfile CareerProfile?
   skills       UserSkill[]
   projects     Project[]
+  certifications Certification[]
+  experiences Experience[]
 }
 
 model Skill {
@@ -60,6 +62,8 @@ model Skill {
   updatedAt DateTime    @updatedAt
   users     UserSkill[]
   projects  ProjectSkill[]
+  certifications CertificationSkill[]
+  experiences ExperienceSkill[]
 }
 
 model Project {
@@ -144,4 +148,63 @@ model RefreshToken {
   usedAt    DateTime?
 
   @@index([sessionId])
+}
+
+model Certification {
+  id Int @id @default(autoincrement())
+  userId Int
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  title String @db.VarChar(200)
+  issuer String @db.VarChar(200)
+  description String? @db.VarChar(3000)
+  credentialId String? @db.VarChar(200)
+  credentialUrl String? @db.VarChar(2048)
+  issuedDate DateTime? @db.Date
+  expiresDate DateTime? @db.Date
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  skills CertificationSkill[]
+  @@index([userId,id])
+}
+
+model CertificationSkill {
+  certificationId Int
+  skillId Int
+  certification Certification @relation(fields: [certificationId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  skill Skill @relation(fields: [skillId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  evidence String? @db.VarChar(1000)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@id([certificationId,skillId])
+  @@index([skillId])
+}
+
+model Experience {
+  id Int @id @default(autoincrement())
+  userId Int
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  title String @db.VarChar(200)
+  organization String @db.VarChar(200)
+  description String? @db.VarChar(3000)
+  achievements String? @db.VarChar(2000)
+  type String @default("OTHER") @db.VarChar(12)
+  startDate DateTime? @db.Date
+  endDate DateTime? @db.Date
+  isCurrent Boolean @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  skills ExperienceSkill[]
+  @@index([userId,id])
+}
+
+model ExperienceSkill {
+  experienceId Int
+  skillId Int
+  experience Experience @relation(fields: [experienceId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  skill Skill @relation(fields: [skillId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  evidence String? @db.VarChar(1000)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@id([experienceId,skillId])
+  @@index([skillId])
 }
