@@ -6,6 +6,12 @@ type Objective = 'improve' | 'tailor' | 'learn';
 type Finding = { title: string; evidence?: string; action: string };
 const normalize = (text: string) => text.toLowerCase().match(/[\p{L}\p{N}][\p{L}\p{N}+#]*/gu)?.join(' ') ?? '';
 const lines = (text: string) => text.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+const commonSkills = ['HTML', 'CSS', 'JavaScript', 'TypeScript', 'React', 'Next.js', 'Node.js', 'REST APIs', 'GraphQL', 'Python', 'Java', 'C++', 'C#', 'SQL', 'PostgreSQL', 'MongoDB', 'Git', 'Docker', 'AWS', 'Linux', 'Excel', 'Power BI', 'Data analysis', 'Machine learning', 'Unit testing', 'Accessibility', 'Communication', 'Teamwork'];
+
+function suggestRequirements(description: string) {
+  const words = ' ' + normalize(description) + ' ';
+  return commonSkills.filter(skill => words.includes(' ' + normalize(skill) + ' ')).slice(0, 20);
+}
 
 function review(resume: string, objective: Objective, criteria: string): Finding[] {
   const resumeLines = lines(resume);
@@ -41,11 +47,13 @@ export function ResumeReviewPage() {
   const [objective, setObjective] = useState<Objective>('improve');
   const [resume, setResume] = useState('');
   const [criteria, setCriteria] = useState('');
+  const [jobDescription, setJobDescription] = useState('');
+  const [suggestionNotice, setSuggestionNotice] = useState('');
   const [findings, setFindings] = useState<Finding[] | null>(null);
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState('');
   const [importNotice, setImportNotice] = useState('');
-  useFormGuard(Boolean(resume || criteria), importing);
+  useFormGuard(Boolean(resume || criteria || jobDescription), importing);
   useEffect(() => { document.title = 'Resume Review · CareerOS'; }, []);
 
   const requirements = lines(criteria);
@@ -80,7 +88,7 @@ export function ResumeReviewPage() {
       <form className="panel skills-panel skill-form" onSubmit={submit}>
         <div className="goal-field">
           <label htmlFor="resume-objective">What do you want to do?</label>
-          <select id="resume-objective" value={objective} onChange={event => { setObjective(event.target.value as Objective); setFindings(null); }}>
+          <select id="resume-objective" value={objective} onChange={event => { setObjective(event.target.value as Objective); setCriteria(''); setSuggestionNotice(''); setFindings(null); }}>
             <option value="improve">Improve my resume</option>
             <option value="tailor">Tailor it to a job</option>
             <option value="learn">Choose what to learn next</option>
@@ -103,6 +111,22 @@ export function ResumeReviewPage() {
           <textarea id="resume-text" rows={11} required maxLength={20000} disabled={importing} value={resume} onChange={event => { setResume(event.target.value); setFindings(null); }} />
           <span className="field-hint">Your text stays in this browser tab while you review it.</span>
         </div>
+        {objective === 'tailor' && <div className="goal-field">
+          <label htmlFor="job-description">Job description</label>
+          <textarea id="job-description" rows={7} maxLength={20000} value={jobDescription} onChange={event => { setJobDescription(event.target.value); setSuggestionNotice(''); setFindings(null); }} />
+          <button className="button secondary" type="button" disabled={!jobDescription.trim()} onClick={() => {
+            const suggestions = suggestRequirements(jobDescription);
+            if (!suggestions.length) {
+              setSuggestionNotice('No common skill phrases found. Add the requirements you want to compare below.');
+              return;
+            }
+            if (criteria.trim() && !window.confirm('Replace your current comparison phrases with these suggestions?')) return;
+            setCriteria(suggestions.join('\n'));
+            setFindings(null);
+            setSuggestionNotice('Check these suggested skill phrases against the job description. Add or remove phrases before reviewing.');
+          }}>Suggest skill phrases</button>
+          {suggestionNotice && <p role="status">{suggestionNotice}</p>}
+        </div>}
         {requiresCriteria && <div className="goal-field">
           <label htmlFor="resume-criteria">{objective === 'tailor' ? 'Key phrases from the job description' : 'Skills you want to learn'}</label>
           <textarea id="resume-criteria" rows={5} required maxLength={2020} value={criteria} onChange={event => { setCriteria(event.target.value); setFindings(null); }} />
@@ -110,7 +134,7 @@ export function ResumeReviewPage() {
           {criteria.trim() && invalidCriteria && <p role="alert">Use 1–20 phrases with letters or numbers and at most 100 characters each.</p>}
         </div>}
         <button className="button primary" disabled={importing || !resume.trim() || invalidCriteria}>Review resume</button>
-        <button className="button text-button" type="button" disabled={importing} onClick={() => { setResume(''); setCriteria(''); setFindings(null); setImportNotice(''); setImportError(''); }}>Clear review</button>
+        <button className="button text-button" type="button" disabled={importing} onClick={() => { setResume(''); setCriteria(''); setJobDescription(''); setSuggestionNotice(''); setFindings(null); setImportNotice(''); setImportError(''); }}>Clear review</button>
       </form>
       <section className="panel skills-panel" aria-labelledby="resume-results">
         <h2 id="resume-results">Review findings</h2>
