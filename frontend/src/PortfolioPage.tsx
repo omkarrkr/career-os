@@ -51,7 +51,7 @@ export function PortfolioPage({ userId, name }: { userId: number; name: string }
       <Link className="button secondary" to="/profile">Edit career profile</Link>
     </section>
     <div className="skills-layout" style={{ marginTop: '1.25rem' }}>
-      <RoleGuide targetRole={saved?.targetRole} />
+      <RoleGuide userId={userId} targetRole={saved?.targetRole} />
       <PortfolioSection<Skill> userId={userId} title="Skills" endpoint="/api/skills" destination="/skills"
         render={row => <li key={row.skillId}><div><h3>{row.skill.name}</h3><p className="field-hint">{levels[row.level] ?? row.level} · Self-reported</p></div></li>} />
       <PortfolioSection<RecordPreview> userId={userId} title="Projects" endpoint="/api/projects" destination="/projects"
