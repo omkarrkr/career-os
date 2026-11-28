@@ -274,3 +274,5 @@ Priority/subtask database foundation is now applied and verified: existing goals
 Priority and subtask controls are now connected: set Low/Medium/High priority, then add, rename, check/uncheck and confirmation-delete owned subtasks from goal details. Checklist progress is separate from the goal's completed status. The prior storage migration is reused; this increment needs no new database change.
 
 The skills storage foundation separates a small shared catalog from account-owned self-reported levels and private notes. Skill API and screen controls follow in the next increment; no personal skills are assigned automatically.
+
+The Skills screen now connects the maintained catalog to private self-reported levels and notes, with search, cursor pagination, duplicate protection, edits, reload/draft handling and confirmation-protected removal. Catalog entries are shared; personal assessments and notes are account-scoped. Levels are not verified proficiency or readiness scores.

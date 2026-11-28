@@ -143,8 +143,9 @@ Acceptance: an authenticated user edits their profile and sees persisted real da
 - [x] Connect priority controls and owned subtask APIs/screens.
 - [x] Add goal deadlines, completion and dashboard overdue counts.
 - [x] Add shared skill catalog and private account-skill storage with a preserving migration.
-- [ ] Connect owned skill APIs, self-reported levels/private notes and skill screens.
-- [ ] Build connected goal/skill UI and test ownership and progress calculations.
+- [x] Connect owned skill APIs, self-reported levels/private notes and skill screens.
+- [x] Build connected goal/skill UI and verify account ownership and goal checklist counts.
+- [ ] Connect project evidence and define meaningful skill/role gap calculations before displaying scores.
 
 ## Phase 5: projects, certifications and experience
 
@@ -240,3 +241,7 @@ Execution verification complete: 95 backend default tests, 24 native database ch
 M4 skills storage (28 November): shared Skill catalog with unique bounded slug/name/category and eight maintained starter labels; private UserSkill composite account/skill key, self-reported BEGINNER/INTERMEDIATE/ADVANCED level, optional bounded notes, timestamps and restrictive foreign keys. No personal skills assigned automatically. Both tables have RLS/no direct policies. Fresh scoped backup included all existing tables, including Subtask, and was restored locally; exact migration rehearsal, constraints/privacy and all-row preservation passed before Supabase apply. Live supported-model drift/status and compiled read-only model checks pass. API/screens are the next increment; no readiness scoring is claimed. No dependency change.
 
 Skills storage verification: 97 backend default tests, 24 native existing-goal/subtask checks (including parent counts), 13 frontend unit tests, 14 browser flows and both production builds passed. Fresh backup/native restore/exact-SQL rehearsal, live migration status/model checks and compiled read-only model queries passed. Test servers/local PostgreSQL stopped. These checks verify storage and existing workflows; skill endpoints/screens are still next.
+
+28 November — owned Skills API and screen complete; owner acceptance pending. Authenticated catalog search and bounded cursor lists; private account skill add/update/remove with strict validation, duplicate conflict without overwriting notes, explicit null clearing and owner-scoped mutations. Skills screen connects catalog selection, self-reported levels/private notes, edit/remove confirmation, paging, retry/reload, draft protection and unknown-write recovery. Removing a personal entry leaves the shared catalog intact. No skill score or verified proficiency claim. No schema/dependency change or real Supabase test writes.
+
+Verified this increment: 99 backend default tests, 8 native Skills integration checks (including parent), 13 frontend unit tests, 15 isolated browser flows and both production builds passed. Desktop/mobile layout reviewed; fictional preview and native PostgreSQL stopped gracefully. Private notes remain ignored. Next: owner tries Skills add/reload/edit/clear/remove cancellation and confirms catalog remains available; project/evidence linking follows the roadmap. Hosted preview and broader polish remain later work.

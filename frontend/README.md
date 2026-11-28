@@ -124,3 +124,11 @@ Whole-goal completed/total counts appear above the list. Pages load 20 at a time
 Native verification: test:integration:subtasks requires a fresh empty loopback careeros_test_subtasks_<suffix> database through TEST_DATABASE_URL. It covers parent/child ownership, safe validation, completion independence, paging/summary, concurrent cap enforcement, cascade and session revocation. Never point the test fixture at Supabase.
 
 Skills storage is prepared separately from the screens. This step adds no Skills navigation or input controls yet. The upcoming workflow will let users select catalog skills and save self-reported levels/private notes, with no fabricated readiness score.
+
+## Skills screen
+
+Skills in the sidebar opens the protected catalog and personal list. Search catalog matches name/category; clear the text and submit to reset it. Select a canonical entry, choose a self-reported Beginner/Intermediate/Advanced level, and add optional private notes (1000 characters). The small catalog is not an exhaustive career checklist. Duplicate personal links are refused without replacing saved notes.
+
+Edit changes only supplied level/notes; clearing notes sends null. Remove asks confirmation and deletes only your personal entry/notes, leaving the catalog and everyone else's entries. Reload keeps any draft; route/sign-out/unload protection uses the same shared form registry. Unknown mutation outcomes require a successful saved-data reload before further changes. Both catalog and saved lists load20 rows per page; counts indicate loaded rows, not total or verified progress. Existing goal/subtask/dashboard behavior remains unchanged.
+
+Use backend test:integration:skills with TEST_DATABASE_URL pointing to a fresh empty loopback careeros_test_skills_<suffix> database for native privacy/concurrency checks. Never use the real Supabase database for test fixtures.

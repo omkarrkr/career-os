@@ -171,3 +171,10 @@ nav a[aria-disabled="true"] { opacity: .6; cursor: wait; }
 .subtask-check { display: flex; gap: 12px; align-items: start; min-width: 0; flex: 1; }.subtask-check span { overflow-wrap: anywhere; }.subtask-check input { width: 20px; height: 20px; min-height: 20px; flex: 0 0 20px; margin: 3px 0 0; padding: 0; }
 .subtask-done { text-decoration: line-through; color: #61777c; }.subtask-buttons { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }.subtask-list .subtask-buttons { margin-top: 0; }.subtask-edit { width: 100%; }.subtask-add { margin-top: 20px; }
 @media(max-width:640px) { .subtask-list li { flex-direction: column; }.subtasks-panel input,.goal-field select { font-size: 16px; } }
+.skills-layout { display: grid; grid-template-columns: minmax(0,.9fr) minmax(0,1.1fr); gap: 24px; margin-top: 24px; align-items: start; }
+.skills-panel { padding: 26px; min-width: 0; }.skills-panel h2 { font-size: 20px; }.skills-panel h3 { font-size: 17px; overflow-wrap: anywhere; }
+.skill-form fieldset { border: 0; padding: 0; margin: 20px 0 0; min-width: 0; }.catalog-search { margin: 20px 0; }
+.personal-skill-list { list-style: none; padding: 0; margin: 0; }.personal-skill-list li { border-top: 1px solid #e5edef; padding: 22px 0; }.personal-skill-list li:first-child { border-top: 0; }
+.skill-notes { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 14px; }.skill-editor { border: 1px solid #d5e7e3; border-radius: 8px; padding: 18px; margin: 20px 0; }
+@media(max-width:1000px) { .skills-layout { grid-template-columns: 1fr; } }
+@media(max-width:640px) { .skills-panel { padding: 21px 18px; }.skills-panel input,.skills-panel textarea,.skills-panel select { font-size: 16px; } }
