@@ -12,3 +12,9 @@ test('skill lists and catalog search use bounded typed cursors and literal searc
     for(const value of [{limit:'51'},{limit:['1','2']},{afterId:'-1'},{userId:'2'}])assert.equal(skillListSchema.safeParse(value).success,false);
     assert.equal(catalogQuerySchema.safeParse({q:'x'.repeat(81)}).success,false);
 });
+test('custom names normalize whitespace/case keys and reject caller ownership or invalid names',async()=>{
+ const {customSkillSchema}=await import('../src/schemas/skill.schema.ts');
+ assert.equal(customSkillSchema.parse({name:'  My   Tool  '}).name,'My Tool');
+ assert.equal(customSkillSchema.parse({name:'Ｒｅａｃｔ'}).name,'React');
+ for(const value of [{name:' '},{name:'x'.repeat(81)},{name:'Bad\u0000Name'},{name:'Tool',ownerId:2},{name:'Tool',category:''}])assert.equal(customSkillSchema.safeParse(value).success,false);
+});

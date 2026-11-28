@@ -29,12 +29,15 @@ try {
   await database.query(`INSERT INTO "Goal" (title,category,status,"targetDate","userId") VALUES ('Plan my first portfolio project','Projects','ACTIVE','2099-01-01',$1),('Read the TypeScript handbook','Learning','COMPLETED','2000-01-01',$1)`,[owner.id]);
   const peer=(await database.query(`INSERT INTO "User" (name,email,"passwordHash","updatedAt") VALUES ('Fictional peer','peer@example.test','fixture-only',NOW()) RETURNING id`)).rows[0];
   await database.query(`INSERT INTO "Goal" (title,category,status,"targetDate","userId") VALUES ('Peer private goal','Private','ACTIVE','2000-01-01',$1)`,[peer.id]);
+  // A separate fictional account keeps custom-skill CRUD independent of other suites.
+  await database.query('INSERT INTO "User" (name,email,"passwordHash","updatedAt") VALUES ($1,$2,$3,NOW())',
+    ['Custom Skill Student','custom-skills@example.test',await bcrypt.hash('Fictional browser test passphrase!',12)]);
 } finally { await database.end(); }
 const { createApp } = await import('../../src/app.ts');
 const { default: prisma } = await import('../../src/config/prisma.ts');
 const fixture = express();
 // Prebuild before listening, as express-rate-limit requires initialization outside requests.
-const suiteApplications = Array.from({ length: 10 }, () => createApp());
+const suiteApplications = Array.from({ length: 11 }, () => createApp());
 let application = suiteApplications.shift();
 fixture.get('/api/__local_fixture__', (_req, res) => res.json({ fixtureKey }));
 // Test-only process state isolation: no data/session changes, production limits unchanged.

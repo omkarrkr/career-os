@@ -51,6 +51,7 @@ model User {
   projects     Project[]
   certifications Certification[]
   experiences Experience[]
+  customSkills Skill[] @relation("CustomSkillOwner")
 }
 
 model Skill {
@@ -64,6 +65,11 @@ model Skill {
   projects  ProjectSkill[]
   certifications CertificationSkill[]
   experiences ExperienceSkill[]
+  ownerId Int?
+  owner User? @relation("CustomSkillOwner", fields: [ownerId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  nameKey String @db.VarChar(80)
+
+  @@unique([ownerId,nameKey])
 }
 
 model Project {

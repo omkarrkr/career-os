@@ -1,3 +1,4 @@
+import { requireVisibleSkills } from './skill-visibility.js';
 import prisma from '../config/prisma.js';
 import { Prisma } from '../generated/prisma/client.js';
 import { ApiError } from '../utils/api-error.js';
@@ -28,7 +29,7 @@ export const getProject = async (userId: number, id: number) => {
     const data = await prisma.project.findFirst({ where: { userId, id }, select: detailFields }); if (!data) throw missing(); return data;
 };
 export const createProject = async (userId: number, input: ProjectInput & { title: string }) => {
-    try { return await prisma.project.create({ data: { ...dataFields(input), title: input.title, userId, skills: { create: evidence(input.skills ?? []) } }, select: detailFields }); }
+    try { return await prisma.$transaction(async tx => { await requireVisibleSkills(tx, userId, input.skills ?? []); return tx.project.create({ data: { ...dataFields(input), title: input.title, userId, skills: { create: evidence(input.skills ?? []) } }, select: detailFields }); }); }
     catch (error) { return mapError(error); }
 };
 export const updateProject = async (userId: number, id: number, input: ProjectInput) => {
@@ -36,6 +37,7 @@ export const updateProject = async (userId: number, id: number, input: ProjectIn
         return await prisma.$transaction(async tx => {
             const rows = await tx.$queryRaw<{ startDate: string | null; endDate: string | null }[]>`SELECT "startDate"::text AS "startDate","endDate"::text AS "endDate" FROM "Project" WHERE id=${id} AND "userId"=${userId} FOR UPDATE`;
             const saved = rows[0]; if (!saved) throw missing();
+            await requireVisibleSkills(tx, userId, input.skills ?? []);
             const start = input.startDate === undefined ? saved.startDate : input.startDate;
             const end = input.endDate === undefined ? saved.endDate : input.endDate;
             if (start && end && end < start) throw new ApiError(400, 'End date must not be before start date');

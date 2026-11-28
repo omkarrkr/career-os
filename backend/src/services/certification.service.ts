@@ -1,3 +1,4 @@
+import { requireVisibleSkills } from './skill-visibility.js';
 import prisma from '../config/prisma.js';
 import { Prisma } from '../generated/prisma/client.js';
 import { ApiError } from '../utils/api-error.js';
@@ -20,12 +21,13 @@ export const listCertifications=async(userId:number,limit:number,afterId?:number
 };
 export const getCertification=async(userId:number,id:number)=>{const data=await prisma.certification.findFirst({where:{userId,id},select:details});if(!data)throw missing();return data;};
 export const createCertification=async(userId:number,input:CertificationInput&{title:string;issuer:string})=>{
-    try{return await prisma.certification.create({data:{...dataFields(input),title:input.title,issuer:input.issuer,userId,skills:{create:evidence(input.skills??[])}},select:details});}catch(error){return mapError(error);}
+    try{return await prisma.$transaction(async tx=>{await requireVisibleSkills(tx,userId,input.skills??[]);return tx.certification.create({data:{...dataFields(input),title:input.title,issuer:input.issuer,userId,skills:{create:evidence(input.skills??[])}},select:details});});}catch(error){return mapError(error);}
 };
 export const updateCertification=async(userId:number,id:number,input:CertificationInput)=>{
     try{return await prisma.$transaction(async tx=>{
         const rows=await tx.$queryRaw<{issuedDate:string|null;expiresDate:string|null;}[]>`SELECT to_char("issuedDate",'YYYY-MM-DD') AS "issuedDate",to_char("expiresDate",'YYYY-MM-DD') AS "expiresDate" FROM "Certification" WHERE id=${id} AND "userId"=${userId} FOR UPDATE`;
         const saved=rows[0];if(!saved)throw missing();
+        await requireVisibleSkills(tx,userId,input.skills??[]);
         const start=input.issuedDate===undefined?saved.issuedDate:input.issuedDate,end=input.expiresDate===undefined?saved.expiresDate:input.expiresDate;
         if(start&&end&&end<start)throw new ApiError(400,'End/expiry date must not be before start/issue date');
 

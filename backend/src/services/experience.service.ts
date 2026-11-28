@@ -1,3 +1,4 @@
+import { requireVisibleSkills } from './skill-visibility.js';
 import prisma from '../config/prisma.js';
 import { Prisma } from '../generated/prisma/client.js';
 import { ApiError } from '../utils/api-error.js';
@@ -21,12 +22,13 @@ export const listExperiences=async(userId:number,limit:number,afterId?:number)=>
 };
 export const getExperience=async(userId:number,id:number)=>{const data=await prisma.experience.findFirst({where:{userId,id},select:details});if(!data)throw missing();return data;};
 export const createExperience=async(userId:number,input:ExperienceInput&{title:string;organization:string})=>{
-    try{return await prisma.experience.create({data:{...dataFields(input),title:input.title,organization:input.organization,userId,skills:{create:evidence(input.skills??[])}},select:details});}catch(error){return mapError(error);}
+    try{return await prisma.$transaction(async tx=>{await requireVisibleSkills(tx,userId,input.skills??[]);return tx.experience.create({data:{...dataFields(input),title:input.title,organization:input.organization,userId,skills:{create:evidence(input.skills??[])}},select:details});});}catch(error){return mapError(error);}
 };
 export const updateExperience=async(userId:number,id:number,input:ExperienceInput)=>{
     try{return await prisma.$transaction(async tx=>{
         const rows=await tx.$queryRaw<{startDate:string|null;endDate:string|null;isCurrent:boolean;}[]>`SELECT to_char("startDate",'YYYY-MM-DD') AS "startDate",to_char("endDate",'YYYY-MM-DD') AS "endDate","isCurrent" FROM "Experience" WHERE id=${id} AND "userId"=${userId} FOR UPDATE`;
         const saved=rows[0];if(!saved)throw missing();
+        await requireVisibleSkills(tx,userId,input.skills??[]);
         const start=input.startDate===undefined?saved.startDate:input.startDate,end=input.endDate===undefined?saved.endDate:input.endDate;
         if(start&&end&&end<start)throw new ApiError(400,'End/expiry date must not be before start/issue date');
         const current=input.isCurrent===undefined?saved.isCurrent:input.isCurrent;

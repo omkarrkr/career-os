@@ -10,7 +10,7 @@ test('skills: catalog, private self-assessment CRUD, recovery, guards and pagina
   const add=page.getByRole('region',{name:'Add a skill',exact:true}),mine=page.getByRole('region',{name:'Your saved skills',exact:true});
   await expect(mine.getByText('No skills saved yet. Add one you are currently learning.',{exact:true})).toBeVisible();
   await add.getByLabel('Search catalog',{exact:true}).fill('SCRIPT');await add.getByRole('button',{name:'Search catalog',exact:true}).click();
-  await expect(add.getByLabel('Catalog skill',{exact:true}).getByRole('option')).toHaveCount(3);
+  await expect(add.getByLabel('Catalog skill',{exact:true}).getByRole('option')).toHaveCount(4);
   await add.getByLabel('Catalog skill',{exact:true}).selectOption('2');await add.getByLabel('Your level',{exact:true}).selectOption('INTERMEDIATE');await add.getByLabel('Private notes (optional)',{exact:true}).fill('Built a small typed project.');
   await add.getByRole('button',{name:'Add to my skills',exact:true}).click();
   await expect(mine.getByRole('heading',{name:'TypeScript',exact:true})).toBeVisible();await page.reload();
