@@ -1,9 +1,10 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useFormGuard } from './lib/form-guard';
 import { readResumePdf } from './lib/resume-pdf';
+import { ResumeLearningGoal } from './ResumeLearningGoal';
 
 type Objective = 'improve' | 'tailor' | 'learn';
-type Finding = { title: string; evidence?: string; action: string };
+type Finding = { title: string; evidence?: string; action: string; learningSkill?: string };
 const normalize = (text: string) => text.toLowerCase().match(/[\p{L}\p{N}][\p{L}\p{N}+#]*/gu)?.join(' ') ?? '';
 const lines = (text: string) => text.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
 const commonSkills = ['HTML', 'CSS', 'JavaScript', 'TypeScript', 'React', 'Next.js', 'Node.js', 'REST APIs', 'GraphQL', 'Python', 'Java', 'C++', 'C#', 'SQL', 'PostgreSQL', 'MongoDB', 'Git', 'Docker', 'AWS', 'Linux', 'Excel', 'Power BI', 'Data analysis', 'Machine learning', 'Unit testing', 'Accessibility', 'Communication', 'Teamwork'];
@@ -34,6 +35,7 @@ function review(resume: string, objective: Objective, criteria: string): Finding
     return {
       title: requirement,
       ...(evidence ? { evidence } : {}),
+      ...(!evidence ? { learningSkill: requirement } : {}),
       action: evidence
         ? 'Phrase found. Check whether the surrounding line explains how you used it.'
         : objective === 'learn'
@@ -43,7 +45,8 @@ function review(resume: string, objective: Objective, criteria: string): Finding
   });
 }
 
-export function ResumeReviewPage() {
+export function ResumeReviewPage({ userId }: { userId: number }) {
+  const [goalSkill, setGoalSkill] = useState<string | null>(null);
   const [objective, setObjective] = useState<Objective>('improve');
   const [resume, setResume] = useState('');
   const [criteria, setCriteria] = useState('');
@@ -140,8 +143,9 @@ export function ResumeReviewPage() {
         <h2 id="resume-results">Review findings</h2>
         {requiresCriteria && <p className="field-hint">This compares the phrases you entered with the words in your resume. Check related experience and synonyms yourself.</p>}
         {findings ? <><p role="status">{findings.length} findings ready to review.</p><ul className="personal-skill-list">{findings.map((finding, index) =>
-          <li key={index}><div><h3>{finding.title}</h3>{finding.evidence && <blockquote className="skill-notes">{finding.evidence}</blockquote>}<p className="skill-notes">{finding.action}</p></div></li>
+          <li key={index}><div><h3>{finding.title}</h3>{finding.evidence && <blockquote className="skill-notes">{finding.evidence}</blockquote>}<p className="skill-notes">{finding.action}</p>{finding.learningSkill && goalSkill === null && <button className="button secondary" type="button" onClick={() => setGoalSkill(finding.learningSkill ?? null)}>Create learning goal</button>}</div></li>
         )}</ul></> : <p>Your feedback will appear here after you run a review.</p>}
+        {goalSkill !== null && <ResumeLearningGoal skill={goalSkill} userId={userId} onCancel={() => setGoalSkill(null)} />}
       </section>
     </div>
   </main>;
