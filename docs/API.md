@@ -1,6 +1,6 @@
 # CareerOS API contracts
 
-Updated 27 November 2026. Development base URL: http://localhost:3000. Registration, login, session refresh/logout and protected real-user profile are implemented. Goal creation/list/detail are ownership-scoped, database ownership is required, and password change revokes sessions; update/delete remain pending; do not expose this as a finished multi-user API.
+Updated 28 November 2026. Development base URL: http://localhost:3000. Registration, login, session refresh/logout, password changes and protected profile are implemented. Goals/subtasks, personal skills and projects use ownership-scoped APIs. Password changes revoke sessions. Production deployment and the later roadmap features remain pending.
 
 ## POST /api/goals
 
@@ -204,3 +204,21 @@ POST /api/skills accepts strict `{skillId,level?,notes?}`. skillId must be a pos
 PATCH /api/skills/:skillId accepts a strict nonempty partial `{level?,notes?}`. Omitted fields remain, null explicitly clears notes; null level is invalid. Returns200 `{data:personalSkill}`. DELETE on the same path returns204 and removes only the signed-in account's link/notes. Missing or foreign personal entries return identical404 Personal skill not found. When two accounts use the same catalog ID, each operation still targets only its own composite key. Removing a personal link leaves the catalog and other users untouched.
 
 No catalog write endpoints are exposed. Caller userId, IDs/timestamps/catalog name/slug/category changes are rejected in personal bodies. IDs/invalid bodies return safe400; missing/invalid/revoked sessions return401 before queries. Private notes never appear in catalog responses. Levels are self-reported labels, not verified skill or readiness scores. Updates/removals combine session userId and skillId in the database mutation predicate. Existing rate limits/CORS/error policies apply; no new schema/dependency is required.
+
+## Projects and skill evidence
+
+All `/api/projects` operations require an active CareerOS session and use its owner ID. Private responses are not cached. A foreign or missing project returns the same `404 Project not found`.
+
+| Method | Path | Behavior |
+| --- | --- | --- |
+| GET | `/api/projects?limit=20&afterId=123` | Own projects, ascending ID cursor, limit 1–50, `{data,nextCursor}`. Each list row includes `_count.skills`. |
+| GET | `/api/projects/:projectId` | `{data}` containing owned details and skill-evidence links. |
+| POST | `/api/projects` | Creates project and optional evidence atomically; returns 201 `{data}`. |
+| PATCH | `/api/projects/:projectId` | Strict, nonempty partial update; returns `{data}`. |
+| DELETE | `/api/projects/:projectId` | Deletes own project and its evidence links; returns 204. |
+
+Project input: required `title` (trimmed, 1–200); optional nullable `description` (3,000), `outcome` (2,000), `repositoryUrl`/`demoUrl` (2,048), `startDate`/`endDate` (valid `YYYY-MM-DD`). `status` is PLANNED (default), IN_PROGRESS or COMPLETED. If both dates exist, end must be on/after start. URLs must be HTTP/HTTPS with no embedded credentials or whitespace; the server does not fetch them or verify their contents. Clients should not store secret links. Caller ownership, IDs and timestamps are rejected in input.
+
+Optional `skills` is an array of at most 20 unique `{skillId,evidence?}` entries. `skillId` references the shared catalog; nullable `evidence` is at most 1,000 characters. On PATCH, omitted fields/skills are preserved, `null` clears optional fields and `skills:[]` removes all links. A supplied skills array replaces the project's links as one transaction. A nonexistent catalog skill returns 400 and rolls back the entire write. Partial date edits lock the owned row and validate the merged saved range. Reads omit internal user ownership and credential fields.
+
+Evidence belongs to the project and survives removal of a personal UserSkill assessment. Removing a project never deletes catalog entries or personal skill levels/notes. Linked skills and project status are self-reported; no verified proficiency/readiness score is calculated. Certifications, employment experience, goal associations and public portfolio sharing are separate future features.

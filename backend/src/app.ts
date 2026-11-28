@@ -3,6 +3,7 @@ import { createUserRouter } from "./routes/user.routes.js";
 import { createAuthRouter } from "./routes/auth.routes.js";
 import { createGoalRouter } from "./routes/goal.routes.js";
 import { createSkillRouter } from "./routes/skill.routes.js";
+import { createProjectRouter } from "./routes/project.routes.js";
 import { errorHandler, notFoundHandler } from "./middleware/error.middleware.js";
 import { readEnvironment } from "./config/env.js";
 import { configureHttpSecurity } from "./middleware/security.middleware.js";
@@ -26,6 +27,7 @@ export const createApp = (settings = readEnvironment()) => {
     app.use("/api/auth", createAuthRouter(settings));
     app.use("/api/goals", createGoalRouter(settings));
     app.use("/api/skills", createSkillRouter(settings));
+    app.use("/api/projects", createProjectRouter(settings));
     app.use(notFoundHandler);
     app.use(errorHandler);
 

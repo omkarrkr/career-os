@@ -145,12 +145,15 @@ Acceptance: an authenticated user edits their profile and sees persisted real da
 - [x] Add shared skill catalog and private account-skill storage with a preserving migration.
 - [x] Connect owned skill APIs, self-reported levels/private notes and skill screens.
 - [x] Build connected goal/skill UI and verify account ownership and goal checklist counts.
-- [ ] Connect project evidence and define meaningful skill/role gap calculations before displaying scores.
+- [x] Connect private project evidence to catalog skills.
+- [ ] Define meaningful skill/role gap calculations before displaying scores (Phase 6).
 
 ## Phase 5: projects, certifications and experience
 
-- [ ] Add owned CRUD, dates, descriptions and outcomes.
-- [ ] Associate skills, projects and goals; validate external URLs.
+- [x] Add owned project CRUD, dates, descriptions, outcomes and validated external URLs.
+- [x] Associate catalog skills with owned projects and private contribution explanations.
+- [ ] Add owned certifications and experience records.
+- [ ] Associate relevant projects and goals with owner-consistent links.
 - [ ] Build portfolio/profile views and verify related-write consistency.
 
 ## Phase 6: career roadmap engine
@@ -245,3 +248,7 @@ Skills storage verification: 97 backend default tests, 24 native existing-goal/s
 28 November — owned Skills API and screen complete; owner acceptance pending. Authenticated catalog search and bounded cursor lists; private account skill add/update/remove with strict validation, duplicate conflict without overwriting notes, explicit null clearing and owner-scoped mutations. Skills screen connects catalog selection, self-reported levels/private notes, edit/remove confirmation, paging, retry/reload, draft protection and unknown-write recovery. Removing a personal entry leaves the shared catalog intact. No skill score or verified proficiency claim. No schema/dependency change or real Supabase test writes.
 
 Verified this increment: 99 backend default tests, 8 native Skills integration checks (including parent), 13 frontend unit tests, 15 isolated browser flows and both production builds passed. Desktop/mobile layout reviewed; fictional preview and native PostgreSQL stopped gracefully. Private notes remain ignored. Next: owner tries Skills add/reload/edit/clear/remove cancellation and confirms catalog remains available; project/evidence linking follows the roadmap. Hosted preview and broader polish remain later work.
+
+28 November — Projects and skill evidence implemented. Owned project CRUD and screen include bounded fields, status/calendar dates, validated external links and up to 20 unique catalog skill links with private contribution explanations. Related writes are atomic; merged date updates lock the owned parent. Evidence survives personal assessment removal; project deletion cascades only its own links. Screen controls include draft protection, safe external links, confirmation-protected deletion and unknown-outcome reload recovery. Records remain self-reported and private, with no proficiency or readiness score.
+
+The additive migration passed fresh scoped backup/native restore/exact-SQL rehearsal, preservation fingerprints for all 8 prior tables, live migration/model checks and compiled read-only smoke. Validation: 103 backend default tests, 8 native project API checks (including parent), 13 frontend unit tests, 16 isolated browser flows and both production builds passed; desktop/mobile editor reviewed. No dependency changes or real test project records. Real-account acceptance is next; certifications/experience, goal links, portfolio views, role-gap calculations and hosted preview remain open.

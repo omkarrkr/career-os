@@ -132,3 +132,9 @@ Skills in the sidebar opens the protected catalog and personal list. Search cata
 Edit changes only supplied level/notes; clearing notes sends null. Remove asks confirmation and deletes only your personal entry/notes, leaving the catalog and everyone else's entries. Reload keeps any draft; route/sign-out/unload protection uses the same shared form registry. Unknown mutation outcomes require a successful saved-data reload before further changes. Both catalog and saved lists load20 rows per page; counts indicate loaded rows, not total or verified progress. Existing goal/subtask/dashboard behavior remains unchanged.
 
 Use backend test:integration:skills with TEST_DATABASE_URL pointing to a fresh empty loopback careeros_test_skills_<suffix> database for native privacy/concurrency checks. Never use the real Supabase database for test fixtures.
+
+## Projects screen
+
+The protected `/projects` screen lists owned projects and opens their details. New/edit forms support status, dates, description, outcome, repository/demo URLs and up to 20 catalog skill links with optional explanations. Partial edits preserve unchanged fields; clearing optional fields sends null and removing all links sends an empty array. Draft protection, reload/retry, unknown-write recovery and permanent-deletion confirmation follow the existing app patterns. Selection is local to this screen and resets on reload; reopen a saved project from the list.
+
+Evidence is a private self-reported record, with no automatic score or change to personal skill levels. No file uploads, URL scraping, publication or independent verification occurs. Native API checks: `npm run test:integration:projects` from backend, using a fresh guarded loopback database. Browser tests use only fictional data.

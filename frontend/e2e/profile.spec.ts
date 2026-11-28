@@ -61,7 +61,7 @@ test('mobile form fits without horizontal overflow and preserves unsaved edits o
   await page.keyboard.press('Shift+Tab');
   await expect(page.getByRole('link', { name: 'CareerOS dashboard', exact: true })).toBeFocused();
   await page.keyboard.press('Shift+Tab');
-  await expect(page.getByRole('navigation', { name: 'Main navigation' }).getByRole('link', { name: 'Skills', exact: true })).toBeFocused();
+  await expect(page.getByRole('navigation', { name: 'Main navigation' }).getByRole('link', { name: 'Projects', exact: true })).toBeFocused();
   await page.keyboard.press('Tab');
   await expect(page.getByRole('link', { name: 'CareerOS dashboard', exact: true })).toBeFocused();
   await page.keyboard.press('Escape');

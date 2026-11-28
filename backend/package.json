@@ -23,7 +23,8 @@
     "test:browser-server": "node --import ./tests/setup-env.mjs --import tsx tests/fixtures/browser-server.mjs",
     "test:integration:dashboard": "node --import ./tests/setup-env.mjs --import tsx --test tests/integration/dashboard.test.mjs",
     "test:integration:subtasks": "node --import ./tests/setup-env.mjs --import tsx --test tests/integration/subtasks.test.mjs",
-    "test:integration:skills": "node --import ./tests/setup-env.mjs --import tsx --test tests/integration/skills.test.mjs"
+    "test:integration:skills": "node --import ./tests/setup-env.mjs --import tsx --test tests/integration/skills.test.mjs",
+    "test:integration:projects": "node --import ./tests/setup-env.mjs --import tsx --test tests/integration/projects.test.mjs"
   },
   "keywords": [],
   "author": "",
