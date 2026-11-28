@@ -28,7 +28,7 @@ export const updateCertification=async(userId:number,id:number,input:Certificati
         const saved=rows[0];if(!saved)throw missing();
         const start=input.issuedDate===undefined?saved.issuedDate:input.issuedDate,end=input.expiresDate===undefined?saved.expiresDate:input.expiresDate;
         if(start&&end&&end<start)throw new ApiError(400,'End/expiry date must not be before start/issue date');
-        
+
         return tx.certification.update({where:{userId,id},data:{...dataFields(input),...(input.skills!==undefined?{skills:{deleteMany:{},create:evidence(input.skills)}}:{})},select:details});
     });}catch(error){return mapError(error);}
 };
