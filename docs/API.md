@@ -248,3 +248,18 @@ The maintained catalog now has 77 shared choices. GET `/api/skills/catalog` stil
 POST `/api/skills/custom` accepts strict `{name,category?}` (name 1–80 characters after Unicode NFKC and whitespace normalization; optional category 1–80, default Custom). Returns 200 `{data:catalogSkill}` whether created or reused. Names use a normalized lowercase key: a matching shared choice is reused first, then an existing owned custom choice. Concurrent duplicates resolve to the same private ID without overwriting its original name/category. Slugs are server-generated; ownerId/nameKey are never accepted or returned. This endpoint creates a reusable choice only, not a self-assessment or evidence link, so retrying the same name after an uncertain response is safe.
 
 Personal-skill POST rejects missing and foreign custom IDs with identical 404. Project/certification/experience create and partial updates validate every supplied skill ID inside the write transaction; missing/foreign choices return the same generic 400 and roll back all changes. No ordinary API can publish, rename, reassign or delete catalog/custom choices. Removing a personal assessment or an evidence link preserves its reusable choice. Existing authentication, validation, rate limits and no-store behavior apply.
+
+## Project–goal connections
+
+All operations require an active session and derive the owner from it. Foreign/missing project or goal parents return the same 404; missing/foreign unlink returns `404 Project–goal link not found`. Responses are no-store and omit internal userId. Connecting or removing a link never changes either record's status, fields, subtasks or skill evidence.
+
+| Method | Path | Behavior |
+| --- | --- | --- |
+| GET | `/api/projects/:projectId/goals` | `{data,nextCursor}` with goalId/projectId/createdAt and safe goal id/title/status/category/priority |
+| POST | `/api/projects/:projectId/goals` | Strict `{goalId:number}`; 201 `{data}`. Both parents must belong to the session owner. Duplicate 409. |
+| DELETE | `/api/projects/:projectId/goals/:goalId` | 204; removes just the owned connection |
+| GET | `/api/goals/:id/projects` | `{data,nextCursor}` with projectId/goalId/createdAt and safe project id/title/status |
+
+Lists accept only `limit` (1–50, default 20) and optional positive `afterId`. Project links sort/cursor by goalId; goal links by projectId. Parent/list reads use one repeatable-read transaction. A project can link at most 100 goals; additions serialize on the owned project and validate/lock the owned goal before insert, so concurrent requests cannot bypass this cap. The composite primary key prevents duplicate links. Completed projects/goals can still be linked; a connection records relevance rather than automatic completion.
+
+Composite foreign keys include userId and reference unique `(id,userId)` parent keys, so cross-account links are rejected by PostgreSQL too. Deleting either parent cascades only its ProjectGoal connections; the other parent stays. RLS denies ordinary direct-client table access. No caller ownership or link timestamps are accepted in input.

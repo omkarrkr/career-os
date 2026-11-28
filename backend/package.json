@@ -26,7 +26,8 @@
     "test:integration:skills": "node --import ./tests/setup-env.mjs --import tsx --test tests/integration/skills.test.mjs",
     "test:integration:projects": "node --import ./tests/setup-env.mjs --import tsx --test tests/integration/projects.test.mjs",
     "test:integration:career-records": "node --import ./tests/setup-env.mjs --import tsx --test tests/integration/career-records.test.mjs",
-    "test:integration:custom-skills": "node --import ./tests/setup-env.mjs --import tsx --test tests/integration/custom-skills.test.mjs"
+    "test:integration:custom-skills": "node --import ./tests/setup-env.mjs --import tsx --test tests/integration/custom-skills.test.mjs",
+    "test:integration:project-goals": "node --import ./tests/setup-env.mjs --import tsx --test tests/integration/project-goals.test.mjs"
   },
   "keywords": [],
   "author": "",

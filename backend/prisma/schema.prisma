@@ -23,6 +23,8 @@ model Goal {
   subtasks    Subtask[]
 
   @@index([userId])
+  @@unique([id,userId])
+  projects ProjectGoal[]
 }
 
 model Subtask {
@@ -89,6 +91,20 @@ model Project {
   skills      ProjectSkill[]
 
   @@index([userId, id])
+  @@unique([id,userId])
+  goals ProjectGoal[]
+}
+
+model ProjectGoal {
+  projectId Int
+  goalId Int
+  userId Int
+  project Project @relation(fields: [projectId,userId], references: [id,userId], onDelete: Cascade, onUpdate: Cascade)
+  goal Goal @relation(fields: [goalId,userId], references: [id,userId], onDelete: Cascade, onUpdate: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([projectId,goalId])
+  @@index([goalId,projectId])
 }
 
 model ProjectSkill {

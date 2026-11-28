@@ -27,6 +27,8 @@ export function GoalActions({ goal, userId, reload }: { goal: Goal; userId: numb
   const invalidate = () => {
     void client.invalidateQueries({ queryKey: ['goals', userId] });
     void client.invalidateQueries({ queryKey: ['dashboard', userId] });
+    void client.invalidateQueries({ queryKey: ['project-goals', userId] });
+    void client.invalidateQueries({ queryKey: ['goal-choices', userId] });
   };
   const failed = (cause: unknown) => {
     const unknownOutcome = !(cause instanceof ApiError) || cause.status === 0 || cause.status >= 500;
@@ -55,7 +57,7 @@ export function GoalActions({ goal, userId, reload }: { goal: Goal; userId: numb
     if (Object.keys(body).length) void patch(body, 'Goal updated.');
   };
   const remove = async () => {
-    if (busy || uncertain || !window.confirm(`Permanently delete “${goal.title}” and its subtasks? This cannot be undone.`)) return;
+    if (busy || uncertain || !window.confirm(`Permanently delete “${goal.title}” and its subtasks? Its project connections will also be removed; the projects will stay. This cannot be undone.`)) return;
     setBusy(true); setError(''); setSuccess('');
     try {
       await auth.api<void>(`/api/goals/${goal.id}`, { method: 'DELETE' });

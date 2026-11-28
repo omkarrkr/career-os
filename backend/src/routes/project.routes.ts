@@ -1,4 +1,5 @@
 import { Router, type Response } from 'express';
+import { projectGoalsController, linkProjectGoalController, unlinkProjectGoalController } from '../controllers/project-goal.controller.js';
 import type { z } from 'zod';
 import type { readEnvironment } from '../config/env.js';
 import { authentication } from '../middleware/authentication.middleware.js';
@@ -13,6 +14,9 @@ function parse<T>(schema: z.ZodType<T>, value: unknown, res: Response): { data: 
 }
 export const createProjectRouter = (settings: ReturnType<typeof readEnvironment>) => {
     const router = Router(); router.use(authentication(settings));
+    router.get('/:projectId/goals', projectGoalsController);
+    router.post('/:projectId/goals', linkProjectGoalController);
+    router.delete('/:projectId/goals/:goalId', unlinkProjectGoalController);
     router.get('/', async (req, res) => { const query = projectListSchema.safeParse(req.query); if (!query.success) throw new ApiError(400, 'Invalid project query'); res.json(await listProjects(owner(res), query.data.limit, query.data.afterId)); });
     router.get('/:projectId', async (req, res) => { res.json({ data: await getProject(owner(res), id(req.params.projectId)) }); });
     router.post('/', async (req, res) => { const input = parse(createProjectSchema, req.body, res); if (input) res.status(201).json({ data: await createProject(owner(res), input.data) }); });

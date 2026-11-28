@@ -32,12 +32,14 @@ try {
   // A separate fictional account keeps custom-skill CRUD independent of other suites.
   await database.query('INSERT INTO "User" (name,email,"passwordHash","updatedAt") VALUES ($1,$2,$3,NOW())',
     ['Custom Skill Student','custom-skills@example.test',await bcrypt.hash('Fictional browser test passphrase!',12)]);
+  await database.query('INSERT INTO "User" (name,email,"passwordHash","updatedAt") VALUES ($1,$2,$3,NOW())',
+    ['Project Link Student','project-links@example.test',await bcrypt.hash('Fictional browser test passphrase!',12)]);
 } finally { await database.end(); }
 const { createApp } = await import('../../src/app.ts');
 const { default: prisma } = await import('../../src/config/prisma.ts');
 const fixture = express();
 // Prebuild before listening, as express-rate-limit requires initialization outside requests.
-const suiteApplications = Array.from({ length: 11 }, () => createApp());
+const suiteApplications = Array.from({ length: 12 }, () => createApp());
 let application = suiteApplications.shift();
 fixture.get('/api/__local_fixture__', (_req, res) => res.json({ fixtureKey }));
 // Test-only process state isolation: no data/session changes, production limits unchanged.

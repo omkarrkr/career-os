@@ -1,3 +1,4 @@
+import { GoalProjects } from './ProjectGoalLinks';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -69,6 +70,7 @@ export function GoalDetailPage({ userId }: { userId: number }) {
       <p className="priority-badge">Priority: {goal.priority === 'HIGH' ? 'High' : goal.priority === 'LOW' ? 'Low' : 'Medium'}</p>
       <dl className="education-summary"><div><dt>Created</dt><dd>{dateLabel(goal.createdAt)}</dd></div><div><dt>Target date</dt><dd>{goal.targetDate ? `${dateLabel(goal.targetDate)} (UTC)` : 'No target date'}</dd></div></dl>
       <h3>Description</h3><p className="goal-description">{goal.description?.trim() ? goal.description : 'No description added.'}</p>
+      <GoalProjects key={'projects-' + goal.id} userId={userId} goalId={goal.id} />
       <GoalActions key={goal.id} goal={goal} userId={userId} reload={async () => { const result = await query.refetch(); if (result.error) throw result.error; return result.data!; }} />
     </section>}<Footer />
   </main>;

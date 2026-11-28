@@ -148,3 +148,9 @@ Partial edits, explicit optional clearing, dirty-navigation checks, reload/retry
 ## Skill selection and custom choices
 
 Skills, Projects, Certifications and Experience offer the expanded catalog plus **Add custom skill** in the dropdown and a nearby button. Projects and record forms include submitted catalog search; choices still load in bounded pages. Custom names/categories are private to the current account. Creating a custom choice selects it immediately; choose/save the personal level or click Link skill and save the surrounding record to associate it. Matching names reuse their identity without overwriting saved levels, notes or evidence. Custom input is guarded against accidental navigation/discard and retained on failed creation; retrying the same name is safe.
+
+## Project–goal linking
+
+Open a saved project to search your goals, select one and Link goal. The Linked goals section supports paging, retry/reload and confirmation-protected unlink. A selected unsaved goal protects navigation and blocks parent edit/delete/switch actions until linked or cancelled. Unknown writes require a saved-link reload before another mutation; if a lost response had already created the link, reload recognizes it and clears that selection.
+
+Goal details show Projects supporting this goal, with links that open the selected owned project via `/projects?projectId=...`. Each project's link list supports up to 100 goals; choices/lists load 20 per page. Connections do not auto-complete anything, and unlinking leaves both records. Deleting a parent cleans its connections, while the other record remains. Native checks: backend `npm run test:integration:project-goals` against a guarded fresh loopback database. Browser tests use a separate fictional account.

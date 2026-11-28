@@ -1,0 +1,15 @@
+import type { Request, Response } from 'express';
+import { z } from 'zod';
+import { goalIdSchema } from '../schemas/goal.schema.js';
+import { skillListSchema } from '../schemas/skill.schema.js';
+import { ApiError } from '../utils/api-error.js';
+import { invalidSession } from '../utils/auth-tokens.js';
+import { listProjectGoals, listGoalProjects, linkProjectGoal, unlinkProjectGoal } from '../services/project-goal.service.js';
+export const projectGoalBodySchema = z.object({ goalId: z.number().int().positive().max(2147483647) }).strict();
+const owner = (res: Response) => { const value: unknown = res.locals.auth?.userId; if (typeof value !== 'number') throw invalidSession(); return value; };
+const id = (value: unknown) => { const parsed = goalIdSchema.safeParse(value); if (!parsed.success) throw new ApiError(400, 'Invalid record ID'); return parsed.data; };
+const query = (req: Request) => { const parsed = skillListSchema.safeParse(req.query); if (!parsed.success) throw new ApiError(400, 'Invalid link query'); return parsed.data; };
+export const projectGoalsController = async (req: Request, res: Response) => { const { limit, afterId } = query(req); res.json(await listProjectGoals(owner(res), id(req.params.projectId), limit, afterId)); };
+export const goalProjectsController = async (req: Request, res: Response) => { const { limit, afterId } = query(req); res.json(await listGoalProjects(owner(res), id(req.params.id), limit, afterId)); };
+export const linkProjectGoalController = async (req: Request, res: Response) => { const parsed = projectGoalBodySchema.safeParse(req.body); if (!parsed.success) throw new ApiError(400, 'Provide only a valid goalId'); res.status(201).json({ data: await linkProjectGoal(owner(res), id(req.params.projectId), parsed.data.goalId) }); };
+export const unlinkProjectGoalController = async (req: Request, res: Response) => { await unlinkProjectGoal(owner(res), id(req.params.projectId), id(req.params.goalId)); res.sendStatus(204); };
