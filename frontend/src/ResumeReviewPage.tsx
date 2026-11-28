@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useFormGuard } from './lib/form-guard';
+import { readResumePdf } from './lib/resume-pdf';
 
 type Objective = 'improve' | 'tailor' | 'learn';
 type Finding = { title: string; evidence?: string; action: string };
@@ -41,7 +42,10 @@ export function ResumeReviewPage() {
   const [resume, setResume] = useState('');
   const [criteria, setCriteria] = useState('');
   const [findings, setFindings] = useState<Finding[] | null>(null);
-  useFormGuard(Boolean(resume || criteria), false);
+  const [importing, setImporting] = useState(false);
+  const [importError, setImportError] = useState('');
+  const [importNotice, setImportNotice] = useState('');
+  useFormGuard(Boolean(resume || criteria), importing);
   useEffect(() => { document.title = 'Resume Review · CareerOS'; }, []);
 
   const requirements = lines(criteria);
@@ -51,11 +55,27 @@ export function ResumeReviewPage() {
   );
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    if (resume.trim() && !invalidCriteria) setFindings(review(resume, objective, criteria));
+    if (!importing && resume.trim() && !invalidCriteria) setFindings(review(resume, objective, criteria));
+  };
+  const importPdf = async (file: File) => {
+    if (importing || (resume.trim() && !window.confirm('Replace the current resume text with this PDF?'))) return;
+    setImporting(true);
+    setImportError('');
+    setImportNotice('');
+    try {
+      const text = await readResumePdf(file);
+      setResume(text.slice(0, 20000));
+      setFindings(null);
+      setImportNotice(text.length > 20000 ? 'Imported the first 20,000 characters. Check the extracted text before reviewing.' : 'PDF imported. Check the extracted text before reviewing.');
+    } catch (error) {
+      setImportError(error instanceof Error && error.name === 'Error' ? error.message : 'Could not read this PDF. Try an unlocked PDF or paste your resume text.');
+    } finally {
+      setImporting(false);
+    }
   };
 
   return <main className="workspace-main" id="main-content" tabIndex={-1}>
-    <div className="page-intro"><div><h1>Resume Review</h1><p className="muted">Paste your resume and choose what you want help with.</p></div></div>
+    <div className="page-intro"><div><h1>Resume Review</h1><p className="muted">Upload a PDF or paste your resume, then choose what you want help with.</p></div></div>
     <div className="skills-layout">
       <form className="panel skills-panel skill-form" onSubmit={submit}>
         <div className="goal-field">
@@ -67,8 +87,20 @@ export function ResumeReviewPage() {
           </select>
         </div>
         <div className="goal-field">
+          <label htmlFor="resume-pdf">Upload resume PDF</label>
+          <input id="resume-pdf" type="file" accept=".pdf,application/pdf" disabled={importing} onChange={event => {
+            const file = event.currentTarget.files?.[0];
+            event.currentTarget.value = '';
+            if (file) void importPdf(file);
+          }} />
+          <span className="field-hint">Up to 10 MB and 15 pages. The file is read in your browser.</span>
+          {importing && <p role="status">Reading PDF…</p>}
+          {importError && <p role="alert">{importError}</p>}
+          {importNotice && <p role="status">{importNotice}</p>}
+        </div>
+        <div className="goal-field">
           <label htmlFor="resume-text">Resume text</label>
-          <textarea id="resume-text" rows={11} required maxLength={20000} value={resume} onChange={event => { setResume(event.target.value); setFindings(null); }} />
+          <textarea id="resume-text" rows={11} required maxLength={20000} disabled={importing} value={resume} onChange={event => { setResume(event.target.value); setFindings(null); }} />
           <span className="field-hint">Your text stays in this browser tab while you review it.</span>
         </div>
         {requiresCriteria && <div className="goal-field">
@@ -77,8 +109,8 @@ export function ResumeReviewPage() {
           <span className="field-hint">Enter up to 20 short phrases, one per line. For example, SQL or REST APIs.</span>
           {criteria.trim() && invalidCriteria && <p role="alert">Use 1–20 phrases with letters or numbers and at most 100 characters each.</p>}
         </div>}
-        <button className="button primary" disabled={!resume.trim() || invalidCriteria}>Review resume</button>
-        <button className="button text-button" type="button" onClick={() => { setResume(''); setCriteria(''); setFindings(null); }}>Clear review</button>
+        <button className="button primary" disabled={importing || !resume.trim() || invalidCriteria}>Review resume</button>
+        <button className="button text-button" type="button" disabled={importing} onClick={() => { setResume(''); setCriteria(''); setFindings(null); setImportNotice(''); setImportError(''); }}>Clear review</button>
       </form>
       <section className="panel skills-panel" aria-labelledby="resume-results">
         <h2 id="resume-results">Review findings</h2>
